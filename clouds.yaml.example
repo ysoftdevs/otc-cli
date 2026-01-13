@@ -1,0 +1,18 @@
+# This is a working example how to connect to OTC prod
+# If up-to-date temporary keys are supplied
+
+clouds:
+  otc-prod:
+    auth:
+      auth_url: https://iam.eu-de.otc.t-systems.com/v3
+      # Domain is not needed for CCE, hence commented
+      #domain_name: "OTC00000000001000117629"
+      project_name: eu-de_prod
+      security_token: SECRET+OMITTED
+      ak: SECRET+OMITTED
+      sk: SECRET+OMITTED
+    region_name: eu-de
+    interface: public
+    identity_api_version: "3"
+    auth_type: aksk
+    profile: otc-prod
