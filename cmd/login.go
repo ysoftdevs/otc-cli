@@ -6,6 +6,7 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
+	"time"
 
 	"github.com/chromedp/cdproto/target"
 	"github.com/chromedp/chromedp"
@@ -82,8 +83,13 @@ func runLogin(args []string) error {
 	ctx, cancel := chromedp.NewContext(
 		allocCtx,
 		chromedp.WithLogf(logf),
+		//chromedp.WithDebugf(logf),
+		//chromedp.WithErrorf(logf),
 	)
 	defer cancel()
+
+	// Channel to signal successful redirect
+	redirectDone := make(chan bool)
 
 	// Listen for navigation events
 	chromedp.ListenTarget(ctx, func(ev interface{}) {
@@ -91,7 +97,10 @@ func runLogin(args []string) error {
 			url := ev.TargetInfo.URL
 			if strings.HasPrefix(url, "https://console.otc.t-systems.com/") {
 				fmt.Println("\nSuccessful login detected - redirected to console")
-				cancel() // Close browser context
+				select {
+				case redirectDone <- true:
+				default:
+				}
 			}
 		}
 	})
@@ -102,6 +111,7 @@ func runLogin(args []string) error {
 	err = chromedp.Run(ctx,
 		chromedp.Navigate(loginArgs.buildURL()),
 		chromedp.WaitReady("body", chromedp.ByQuery),
+
 	)
 	if err != nil {
 		return err
@@ -109,6 +119,35 @@ func runLogin(args []string) error {
 
 	// Wait for either redirect or browser close
 	select {
+	case <-redirectDone:
+		fmt.Println("Fetching credentials...")
+
+		var creds string
+
+		err = chromedp.Run(ctx,
+			chromedp.Evaluate(`
+				__credentials__ = null;
+				fetch('https://console.otc.t-systems.com/iam/server/aklist?type=sts&duration=54000', {
+					method: 'GET',
+					credentials: 'include'
+				})
+				.then(response => response.text())
+				.then(text => { __credentials__ = text; });
+			`, nil),
+			chromedp.Poll("__credentials__", &creds, chromedp.WithPollingInterval(time.Second)),
+		)
+		if err != nil {
+			fmt.Printf("Failed to fetch credentials: %v\n", err)
+			cancel()
+			return err
+		}
+
+		fmt.Println("Credentials received:")
+		fmt.Println(creds)
+
+		fmt.Println("Closing browser...")
+		cancel()
+		return nil
 	case <-ctx.Done():
 		fmt.Println("Browser closed")
 		return nil
@@ -116,5 +155,5 @@ func runLogin(args []string) error {
 }
 
 func logf(format string, args ...any) {
-	// Intentionally minimal; can be replaced with structured logging later
+	fmt.Printf(format+"\n", args...)
 }
