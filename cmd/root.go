@@ -21,6 +21,8 @@ func run() error {
 	switch os.Args[1] {
 	case "login":
 		return runLogin(os.Args[2:])
+	case "cce":
+		return runCCE(os.Args[2:])
 	default:
 		return fmt.Errorf("unknown subcommand: %s", os.Args[1])
 	}

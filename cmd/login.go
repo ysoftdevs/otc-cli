@@ -111,7 +111,6 @@ func runLogin(args []string) error {
 	err = chromedp.Run(ctx,
 		chromedp.Navigate(loginArgs.buildURL()),
 		chromedp.WaitReady("body", chromedp.ByQuery),
-
 	)
 	if err != nil {
 		return err
@@ -142,8 +141,15 @@ func runLogin(args []string) error {
 			return err
 		}
 
-		fmt.Println("Credentials received:")
-		fmt.Println(creds)
+		fmt.Println("Credentials received")
+
+		// Update clouds.yaml with the credentials
+		cloudName := "otc"
+		if err := UpdateCloudsWithSTSCredentials(cloudName, creds); err != nil {
+			fmt.Printf("Failed to update clouds.yaml: %v\n", err)
+			cancel()
+			return err
+		}
 
 		fmt.Println("Closing browser...")
 		cancel()

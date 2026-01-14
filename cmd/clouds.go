@@ -1,12 +1,29 @@
 package cmd
 
 import (
+	"encoding/json"
 	"fmt"
 	"os"
 	"path/filepath"
 
 	"gopkg.in/yaml.v2"
 )
+
+// STSCredentialResponse represents the response from the STS credential endpoint
+type STSCredentialResponse struct {
+	Data struct {
+		Credential STSCredential `json:"credential"`
+	} `json:"data"`
+	RetInfo string `json:"retinfo"`
+}
+
+// STSCredential represents the temporary credentials
+type STSCredential struct {
+	Access        string `json:"access"`
+	Secret        string `json:"secret"`
+	ExpiresAt     string `json:"expires_at"`
+	SecurityToken string `json:"securitytoken"`
+}
 
 // CloudsYAML represents the root structure of clouds.yaml
 type CloudsYAML struct {
@@ -38,7 +55,9 @@ type AuthConfig struct {
 	UserDomainID                string                 `yaml:"user_domain_id,omitempty"`
 	DomainName                  string                 `yaml:"domain_name,omitempty"`
 	DomainID                    string                 `yaml:"domain_id,omitempty"`
-	Token                       string                 `yaml:"token,omitempty"`
+	Token                       string                 `yaml:"security_token,omitempty"`
+	AccessKey                   string                 `yaml:"ak,omitempty"`
+	SecretKey                   string                 `yaml:"sk,omitempty"`
 	ApplicationCredentialID     string                 `yaml:"application_credential_id,omitempty"`
 	ApplicationCredentialName   string                 `yaml:"application_credential_name,omitempty"`
 	ApplicationCredentialSecret string                 `yaml:"application_credential_secret,omitempty"`
@@ -98,4 +117,56 @@ func GetCloudsYAMLPath() (string, error) {
 	}
 
 	return filepath.Join(homeDir, ".config", "openstack", "clouds.yaml"), nil
+}
+
+// UpdateCloudsWithSTSCredentials updates clouds.yaml with STS credentials
+func UpdateCloudsWithSTSCredentials(cloudName string, credJSON string) error {
+	// Parse the credential response
+	var credResp STSCredentialResponse
+	if err := json.Unmarshal([]byte(credJSON), &credResp); err != nil {
+		return fmt.Errorf("failed to parse credential response: %w", err)
+	}
+
+	if credResp.RetInfo != "success" {
+		return fmt.Errorf("credential request failed: %s", credResp.RetInfo)
+	}
+
+	// Get clouds.yaml path
+	cloudsPath, err := GetCloudsYAMLPath()
+	if err != nil {
+		return err
+	}
+
+	// Load existing clouds.yaml
+	clouds, err := LoadCloudsYAML(cloudsPath)
+	if err != nil {
+		return err
+	}
+
+	cred := credResp.Data.Credential
+
+	// Create or update the cloud configuration
+	clouds.Clouds[cloudName] = CloudConfig{
+		Auth: AuthConfig{
+			AuthURL:    "https://iam.eu-de.otc.t-systems.com/v3",
+			AccessKey:  cred.Access,
+			SecretKey:  cred.Secret,
+			Token:      cred.SecurityToken,
+			DomainName: "OTC-EU-DE-00000000001000000593",
+		},
+		RegionName:  "eu-de",
+		Interface:   "public",
+		IdentityAPI: "3",
+		AuthType:    "v3token",
+	}
+
+	// Save clouds.yaml
+	if err := SaveCloudsYAML(cloudsPath, clouds); err != nil {
+		return err
+	}
+
+	fmt.Printf("Updated cloud configuration '%s' in %s\n", cloudName, cloudsPath)
+	fmt.Printf("Credentials expire at: %s\n", cred.ExpiresAt)
+
+	return nil
 }
