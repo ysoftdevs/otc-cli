@@ -120,7 +120,7 @@ func GetCloudsYAMLPath() (string, error) {
 }
 
 // UpdateCloudsWithSTSCredentials updates clouds.yaml with STS credentials
-func UpdateCloudsWithSTSCredentials(cloudName string, credJSON string) error {
+func UpdateCloudsWithSTSCredentials(cloudName string, domainId string, credJSON string) error {
 	// Parse the credential response
 	var credResp STSCredentialResponse
 	if err := json.Unmarshal([]byte(credJSON), &credResp); err != nil {
@@ -152,7 +152,7 @@ func UpdateCloudsWithSTSCredentials(cloudName string, credJSON string) error {
 			AccessKey:  cred.Access,
 			SecretKey:  cred.Secret,
 			Token:      cred.SecurityToken,
-			DomainName: "OTC-EU-DE-00000000001000000593",
+			DomainID:   domainId,
 		},
 		RegionName:  "eu-de",
 		Interface:   "public",

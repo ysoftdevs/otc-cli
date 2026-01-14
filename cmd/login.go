@@ -17,6 +17,7 @@ type loginArgs struct {
 	domainID string
 	idp      string
 	protocol string
+	cloudId  string
 }
 
 func parseLoginArgs(args []string) loginArgs {
@@ -26,6 +27,7 @@ func parseLoginArgs(args []string) loginArgs {
 		domainID: "99370f87daf946bba4938c30330cbafd",
 		idp:      "Y_Soft_Entra_ID_PROD",
 		protocol: "saml",
+		cloudId:  "otc-prod",
 	}
 
 	// Parse arguments (if provided)
@@ -137,22 +139,21 @@ func runLogin(args []string) error {
 		)
 		if err != nil {
 			fmt.Printf("Failed to fetch credentials: %v\n", err)
-			cancel()
+			//cancel()
 			return err
 		}
 
 		fmt.Println("Credentials received")
 
 		// Update clouds.yaml with the credentials
-		cloudName := "otc"
-		if err := UpdateCloudsWithSTSCredentials(cloudName, creds); err != nil {
+		if err := UpdateCloudsWithSTSCredentials(loginArgs.cloudId, loginArgs.domainID,creds); err != nil {
 			fmt.Printf("Failed to update clouds.yaml: %v\n", err)
-			cancel()
+			//cancel()
 			return err
 		}
 
 		fmt.Println("Closing browser...")
-		cancel()
+		chromedp.Cancel(ctx)
 		return nil
 	case <-ctx.Done():
 		fmt.Println("Browser closed")
