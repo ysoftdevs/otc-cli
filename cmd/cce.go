@@ -3,7 +3,7 @@ package cmd
 import (
 	"fmt"
 	"os"
-	client "otc-cli/client"
+	"otc-cli/client"
 
 	golangsdk "github.com/opentelekomcloud/gophertelekomcloud"
 	"github.com/opentelekomcloud/gophertelekomcloud/openstack"
