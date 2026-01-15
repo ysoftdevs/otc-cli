@@ -2,11 +2,13 @@ package cmd
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"os"
 	"path/filepath"
 	"time"
 
+	config "otc-cli/config"
 	"github.com/chromedp/chromedp"
 )
 
@@ -16,6 +18,23 @@ type loginArgs struct {
 	idp      string
 	protocol string
 	cloudId  string
+}
+
+
+// STSCredentialResponse represents the response from the STS credential endpoint
+type STSCredentialResponse struct {
+	Data struct {
+		Credential STSCredential `json:"credential"`
+	} `json:"data"`
+	RetInfo string `json:"retinfo"`
+}
+
+// STSCredential represents the temporary credentials
+type STSCredential struct {
+	Access        string `json:"access"`
+	Secret        string `json:"secret"`
+	ExpiresAt     string `json:"expires_at"`
+	SecurityToken string `json:"securitytoken"`
 }
 
 func parseLoginArgs(args []string) loginArgs {
@@ -104,7 +123,7 @@ func runLogin(args []string) error {
 		return err
 	}
 
-	err = UpdateCloudsWithSTSCredentials(loginArgs.cloudId, loginArgs.domainID, creds)
+	err = storeCredentials(creds, &loginArgs)
 	if err != nil {
 		fmt.Printf("Failed to update clouds.yaml: %v\n", err)
 		return err
@@ -170,6 +189,31 @@ func fetchTempCredentials(ctx context.Context) (string, error) {
 		fmt.Printf("Credentials received\n")
 		return creds, nil
 	}
+}
+
+func storeCredentials(creds string, loginArgs *loginArgs) error {
+	var credResp STSCredentialResponse
+	if err := json.Unmarshal([]byte(creds), &credResp); err != nil {
+		return fmt.Errorf("failed to parse credential response: %w", err)
+	}
+
+	if credResp.RetInfo != "success" {
+		return fmt.Errorf("credential request failed: %s", credResp.RetInfo)
+	}
+
+	if err := config.UpdateCloudConfig(loginArgs.cloudId, func(cloud *config.CloudConfig) {
+		cloud.Auth.AuthURL = "https://iam.eu-de.otc.t-systems.com/v3"
+		cloud.Auth.DomainID = loginArgs.domainID
+		cloud.Auth.AccessKey = credResp.Data.Credential.Access
+		cloud.Auth.SecretKey = credResp.Data.Credential.Secret
+		cloud.Auth.SecurityToken = credResp.Data.Credential.SecurityToken
+		cloud.AuthType = "aksk"
+		cloud.RegionName = "eu-de"
+	}); err != nil {
+		return err
+	}
+	fmt.Printf("Credentials stored in clouds.yaml under cloud '%s'\n", loginArgs.cloudId)
+	return nil
 }
 
 func logf(format string, args ...any) {

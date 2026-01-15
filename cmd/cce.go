@@ -17,13 +17,39 @@ func runCCE(args []string) error {
 	subcommand := args[0]
 	switch subcommand {
 	case "list":
-		return runCCEList()
+		return runCCEList(args[1:])
 	default:
 		return fmt.Errorf("unknown CCE subcommand: %s", subcommand)
 	}
 }
 
-func getCCEClouds() (*golangsdk.ServiceClient, error) {
+func getCCEClouds(projectName string) (*golangsdk.ServiceClient, error) {
+	opts, err := getAuthOpts()
+	if err != nil {
+		return nil, err
+	}
+
+	if projectName != "" {
+		if akOpts, ok := opts.(golangsdk.AKSKAuthOptions); ok {
+			akOpts.ProjectName = projectName
+			opts = akOpts
+		} else if pwOpts, ok := opts.(golangsdk.AuthOptions); ok {
+			pwOpts.TenantName = projectName
+			opts = pwOpts
+		}
+	}
+
+	client, err := openstack.AuthenticatedClient(opts)
+	if err != nil {
+		return nil, fmt.Errorf("failed to authenticate client: %s", err)
+	}
+
+	return openstack.NewCCE(client, golangsdk.EndpointOpts{
+		Region: "eu-de",
+	})
+}
+
+func getAuthOpts() (golangsdk.AuthOptionsProvider, error) {
 	env := openstack.NewEnv("OTC_")
 	cloud, err := env.Cloud("otc-prod")
 
@@ -43,19 +69,25 @@ func getCCEClouds() (*golangsdk.ServiceClient, error) {
 			opts = akskOpts
 		}
 	}
+	return opts, nil
+}
 
+func getAuthenticatedClient(opts golangsdk.AuthOptionsProvider) (*golangsdk.ProviderClient, error) {
 	client, err := openstack.AuthenticatedClient(opts)
 	if err != nil {
 		return nil, fmt.Errorf("failed to authenticate client: %s", err)
 	}
-
-	return openstack.NewCCE(client, golangsdk.EndpointOpts{
-		Region: "eu-de",
-	})
+	return client, nil
 }
 
-func runCCEList() error {
-	cce, err := getCCEClouds()
+func runCCEList(args []string) error {
+	projectName := ""
+	if len(args) >= 1 {
+		projectName = args[0]
+	}
+
+
+	cce, err := getCCEClouds(projectName)
 	if err != nil {
 		return fmt.Errorf("failed to create CCE client: %w", err)
 	}

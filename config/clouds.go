@@ -1,29 +1,12 @@
 package cmd
 
 import (
-	"encoding/json"
 	"fmt"
 	"os"
 	"path/filepath"
 
 	"gopkg.in/yaml.v2"
 )
-
-// STSCredentialResponse represents the response from the STS credential endpoint
-type STSCredentialResponse struct {
-	Data struct {
-		Credential STSCredential `json:"credential"`
-	} `json:"data"`
-	RetInfo string `json:"retinfo"`
-}
-
-// STSCredential represents the temporary credentials
-type STSCredential struct {
-	Access        string `json:"access"`
-	Secret        string `json:"secret"`
-	ExpiresAt     string `json:"expires_at"`
-	SecurityToken string `json:"securitytoken"`
-}
 
 // CloudsYAML represents the root structure of clouds.yaml
 type CloudsYAML struct {
@@ -55,38 +38,55 @@ type AuthConfig struct {
 	UserDomainID                string                 `yaml:"user_domain_id,omitempty"`
 	DomainName                  string                 `yaml:"domain_name,omitempty"`
 	DomainID                    string                 `yaml:"domain_id,omitempty"`
-	Token                       string                 `yaml:"security_token,omitempty"`
+	Token                       string                 `yaml:"token,omitempty"`
 	AccessKey                   string                 `yaml:"ak,omitempty"`
 	SecretKey                   string                 `yaml:"sk,omitempty"`
+	SecurityToken               string                 `yaml:"security_token,omitempty"`
 	ApplicationCredentialID     string                 `yaml:"application_credential_id,omitempty"`
 	ApplicationCredentialName   string                 `yaml:"application_credential_name,omitempty"`
 	ApplicationCredentialSecret string                 `yaml:"application_credential_secret,omitempty"`
 	Extra                       map[string]interface{} `yaml:",inline"`
 }
 
+func LoadCloudsYAMLFromDefaultLocation() (CloudsYAML, error){
+	cloudsPath, err := GetCloudsYAMLPath()
+	if err != nil {
+		return CloudsYAML{}, err
+	}
+	return LoadCloudsYAML(cloudsPath)
+}
+
 // LoadCloudsYAML loads the clouds.yaml file from the specified path
-func LoadCloudsYAML(path string) (*CloudsYAML, error) {
+func LoadCloudsYAML(path string) (CloudsYAML, error) {
 	data, err := os.ReadFile(path)
 	if err != nil {
 		if os.IsNotExist(err) {
 			// Return empty structure if file doesn't exist
-			return &CloudsYAML{
+			return CloudsYAML{
 				Clouds: make(map[string]CloudConfig),
 			}, nil
 		}
-		return nil, fmt.Errorf("failed to read clouds.yaml: %w", err)
+		return CloudsYAML{}, fmt.Errorf("failed to read clouds.yaml: %w", err)
 	}
 
 	var clouds CloudsYAML
 	if err := yaml.Unmarshal(data, &clouds); err != nil {
-		return nil, fmt.Errorf("failed to parse clouds.yaml: %w", err)
+		return CloudsYAML{}, fmt.Errorf("failed to parse clouds.yaml: %w", err)
 	}
 
 	if clouds.Clouds == nil {
 		clouds.Clouds = make(map[string]CloudConfig)
 	}
 
-	return &clouds, nil
+	return clouds, nil
+}
+
+func SaveCloudsYAMLToDefaultLocation(clouds *CloudsYAML) error {
+	cloudsPath, err := GetCloudsYAMLPath()
+	if err != nil {
+		return err
+	}
+	return SaveCloudsYAML(cloudsPath, clouds)
 }
 
 // SaveCloudsYAML saves the clouds.yaml file to the specified path
@@ -119,54 +119,43 @@ func GetCloudsYAMLPath() (string, error) {
 	return filepath.Join(homeDir, ".config", "openstack", "clouds.yaml"), nil
 }
 
-// UpdateCloudsWithSTSCredentials updates clouds.yaml with STS credentials
-func UpdateCloudsWithSTSCredentials(cloudName string, domainId string, credJSON string) error {
-	// Parse the credential response
-	var credResp STSCredentialResponse
-	if err := json.Unmarshal([]byte(credJSON), &credResp); err != nil {
-		return fmt.Errorf("failed to parse credential response: %w", err)
+func LoadCloudConfig(cloudName string) (CloudConfig, error) {
+	clouds, err := LoadCloudsYAMLFromDefaultLocation()
+	if err != nil {
+		return CloudConfig{}, err
 	}
 
-	if credResp.RetInfo != "success" {
-		return fmt.Errorf("credential request failed: %s", credResp.RetInfo)
+	cloud, exists := clouds.Clouds[cloudName]
+	if !exists {
+		return CloudConfig{}, nil
 	}
+	return cloud, nil
+}
 
-	// Get clouds.yaml path
-	cloudsPath, err := GetCloudsYAMLPath()
+func SaveCloudConfig(cloudName string, cloud CloudConfig) error {
+	clouds, err := LoadCloudsYAMLFromDefaultLocation()
 	if err != nil {
 		return err
 	}
 
-	// Load existing clouds.yaml
-	clouds, err := LoadCloudsYAML(cloudsPath)
+	clouds.Clouds[cloudName] = cloud
+
+	return SaveCloudsYAMLToDefaultLocation(&clouds)
+}
+
+func UpdateCloudConfig(cloudName string, updateFunc func(*CloudConfig)) error {
+	clouds, err := LoadCloudsYAMLFromDefaultLocation()
 	if err != nil {
 		return err
 	}
 
-	cred := credResp.Data.Credential
-
-	// Create or update the cloud configuration
-	clouds.Clouds[cloudName] = CloudConfig{
-		Auth: AuthConfig{
-			AuthURL:    "https://iam.eu-de.otc.t-systems.com/v3",
-			AccessKey:  cred.Access,
-			SecretKey:  cred.Secret,
-			Token:      cred.SecurityToken,
-			DomainID:   domainId,
-		},
-		RegionName:  "eu-de",
-		Interface:   "public",
-		IdentityAPI: "3",
-		AuthType:    "v3token",
+	cloud, exists := clouds.Clouds[cloudName]
+	if !exists {
+		cloud = CloudConfig{}
 	}
 
-	// Save clouds.yaml
-	if err := SaveCloudsYAML(cloudsPath, clouds); err != nil {
-		return err
-	}
+	updateFunc(&cloud)
+	clouds.Clouds[cloudName] = cloud
 
-	fmt.Printf("Updated cloud configuration '%s' in %s\n", cloudName, cloudsPath)
-	fmt.Printf("Credentials expire at: %s\n", cred.ExpiresAt)
-
-	return nil
+	return SaveCloudsYAMLToDefaultLocation(&clouds)
 }
