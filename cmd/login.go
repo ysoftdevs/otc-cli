@@ -78,11 +78,11 @@ func runLogin(args []string) error {
 		context.Background(),
 		chromedp.Flag("headless", false),
 		chromedp.Flag("disable-gpu", false),
-		chromedp.Flag("no-sandbox", true),
+		// chromedp.Flag("no-sandbox", true),
 		chromedp.Flag("no-default-browser-check", true),
 		chromedp.Flag("no-first-run", true),
 		chromedp.Flag("disable-default-apps", true),
-		//chromedp.Flag("window-size", "800,900"),
+		chromedp.Flag("window-size", "800,900"),
 		chromedp.UserDataDir(userDataDir),
 	)
 	defer allocCancel()
