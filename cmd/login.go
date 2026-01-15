@@ -5,10 +5,8 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
-	"strings"
 	"time"
 
-	"github.com/chromedp/cdproto/target"
 	"github.com/chromedp/chromedp"
 )
 
@@ -50,25 +48,33 @@ func (la loginArgs) buildURL() string {
 		la.baseURL, la.domainID, la.idp, la.protocol)
 }
 
-func runLogin(args []string) error {
-	loginArgs := parseLoginArgs(args)
-
+func getUserDataDir() (string, error) {
 	// Get user's home directory for storing cookies
 	homeDir, err := os.UserHomeDir()
 	if err != nil {
-		return fmt.Errorf("failed to get home directory: %w", err)
+		return "", fmt.Errorf("failed to get home directory: %w", err)
 	}
 
 	// Create directory for storing browser data
 	userDataDir := filepath.Join(homeDir, ".otc-cli", "browser-data")
 	if err := os.MkdirAll(userDataDir, 0755); err != nil {
-		return fmt.Errorf("failed to create user data directory: %w", err)
+		return "", fmt.Errorf("failed to create user data directory: %w", err)
 	}
 
 	fmt.Printf("Using user data directory: %s\n", userDataDir)
+	return userDataDir, nil
+}
+
+func runLogin(args []string) error {
+	loginArgs := parseLoginArgs(args)
+
+	userDataDir, err := getUserDataDir()
+	if err != nil {
+		return err
+	}
 
 	// Create Chrome allocator with visible browser
-	allocCtx, cancel := chromedp.NewExecAllocator(
+	allocCtx, allocCancel := chromedp.NewExecAllocator(
 		context.Background(),
 		chromedp.Flag("headless", false),
 		chromedp.Flag("disable-gpu", false),
@@ -76,36 +82,19 @@ func runLogin(args []string) error {
 		chromedp.Flag("no-default-browser-check", true),
 		chromedp.Flag("no-first-run", true),
 		chromedp.Flag("disable-default-apps", true),
-		chromedp.Flag("window-size", "800,900"),
+		//chromedp.Flag("window-size", "800,900"),
 		chromedp.UserDataDir(userDataDir),
 	)
-	defer cancel()
+	defer allocCancel()
 
 	// Create Chrome context
-	ctx, cancel := chromedp.NewContext(
+	ctx, _ := chromedp.NewContext(
 		allocCtx,
 		chromedp.WithLogf(logf),
 		//chromedp.WithDebugf(logf),
 		//chromedp.WithErrorf(logf),
 	)
-	defer cancel()
-
-	// Channel to signal successful redirect
-	redirectDone := make(chan bool)
-
-	// Listen for navigation events
-	chromedp.ListenTarget(ctx, func(ev interface{}) {
-		if ev, ok := ev.(*target.EventTargetInfoChanged); ok {
-			url := ev.TargetInfo.URL
-			if strings.HasPrefix(url, "https://console.otc.t-systems.com/") {
-				fmt.Println("\nSuccessful login detected - redirected to console")
-				select {
-				case redirectDone <- true:
-				default:
-				}
-			}
-		}
-	})
+	defer chromedp.Cancel(ctx)
 
 	fmt.Println("Opening managed browser for login...")
 	fmt.Println("Waiting for authentication...")
@@ -115,49 +104,86 @@ func runLogin(args []string) error {
 		chromedp.WaitReady("body", chromedp.ByQuery),
 	)
 	if err != nil {
+		fmt.Printf("Failed to open browser: %v\n", err)
 		return err
 	}
 
-	// Wait for either redirect or browser close
-	select {
-	case <-redirectDone:
-		fmt.Println("Fetching credentials...")
+	// Wait for user to complete login and be redirected to console
+	fmt.Println("Please complete the login in the opened browser window.")
+	fmt.Println("Waiting for redirect to console...")
 
-		var creds string
+	err = chromedp.Run(ctx,
+		chromedp.WaitVisible("cf_logo", chromedp.ByID),
+	)
+	if err != nil {
+		fmt.Printf("Login timeout or failed: %v\n", err)
+		return err
+	}
 
-		err = chromedp.Run(ctx,
-			chromedp.Evaluate(`
-				__credentials__ = null;
-				fetch('https://console.otc.t-systems.com/iam/server/aklist?type=sts&duration=54000', {
-					method: 'GET',
-					credentials: 'include'
-				})
-				.then(response => response.text())
-				.then(text => { __credentials__ = text; });
-			`, nil),
-			chromedp.Poll("__credentials__", &creds, chromedp.WithPollingInterval(time.Second)),
-		)
-		if err != nil {
-			fmt.Printf("Failed to fetch credentials: %v\n", err)
-			//cancel()
-			return err
-		}
+	creds, err := fetchTempCredentials(ctx)
+	if err != nil {
+		fmt.Printf("Failed to fetch credentials: %v\n", err)
+		return err
+	}
 
-		fmt.Println("Credentials received")
+	err = UpdateCloudsWithSTSCredentials(loginArgs.cloudId, loginArgs.domainID, creds)
+	if err != nil {
+		fmt.Printf("Failed to update clouds.yaml: %v\n", err)
+		return err
+	}
 
-		// Update clouds.yaml with the credentials
-		if err := UpdateCloudsWithSTSCredentials(loginArgs.cloudId, loginArgs.domainID,creds); err != nil {
-			fmt.Printf("Failed to update clouds.yaml: %v\n", err)
-			//cancel()
-			return err
-		}
+	// for true {
 
-		fmt.Println("Closing browser...")
-		chromedp.Cancel(ctx)
-		return nil
-	case <-ctx.Done():
-		fmt.Println("Browser closed")
-		return nil
+	// 	select {
+	// 	case <-redirected:
+	// 		fetchTempCredentials(ctx, errors, credentials)
+
+	// 	case creds := <-credentials:
+	// 		// Update clouds.yaml with the credentials
+	// 		if err := UpdateCloudsWithSTSCredentials(loginArgs.cloudId, loginArgs.domainID, creds); err != nil {
+	// 			fmt.Printf("Failed to update clouds.yaml: %v\n", err)
+	// 			return err
+	// 		}
+
+	// 	case err := <-errors:
+	// 		fmt.Printf("Error during login process: %v\n", err)
+	// 		return err
+	// 	case <-time.After(10 * time.Minute):
+	// 		fmt.Println("Login timed out after 10 minutes.")
+	// 		//cancel()
+	// 		return fmt.Errorf("login timed out")
+
+	// 	case <-ctx.Done():
+	// 		fmt.Println("Browser closed")
+	// 		return fmt.Errorf("Browser closed before login completed")
+	// 	}
+	// }
+
+	return nil
+}
+
+func fetchTempCredentials(ctx context.Context) (string, error) {
+	fmt.Println("Fetching credentials...")
+
+	var creds string
+	err := chromedp.Run(ctx,
+		chromedp.Evaluate(`
+					__credentials__ = null;
+					fetch('https://console.otc.t-systems.com/iam/server/aklist?type=sts&duration=54000', {
+						method: 'GET',
+						credentials: 'include'
+					})
+					.then(response => response.text())
+					.then(text => { __credentials__ = text; });
+				`, nil),
+		chromedp.Poll("__credentials__", &creds, chromedp.WithPollingInterval(time.Second)),
+	)
+	if err != nil {
+		fmt.Printf("Failed to fetch credentials: %v\n", err)
+		return "", err
+	} else {
+		fmt.Printf("Credentials received\n")
+		return creds, nil
 	}
 }
 
