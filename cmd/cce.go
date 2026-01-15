@@ -25,7 +25,14 @@ func runCCE(args []string) error {
 }
 
 func getCCEClouds(projectName string) (*golangsdk.ServiceClient, error) {
-	opts, err := client.GetAuthOpts()
+	commonOpts := &client.CommonConfig{
+		EnvPrefix:   "OTC_",
+		CloudName:   "otc-prod",
+		Region:      "eu-de",
+		ProjectName: projectName,
+	}
+
+	opts, err := client.GetAuthOpts(commonOpts)
 	if err != nil {
 		return nil, err
 	}
@@ -46,7 +53,7 @@ func getCCEClouds(projectName string) (*golangsdk.ServiceClient, error) {
 	}
 
 	return openstack.NewCCE(client, golangsdk.EndpointOpts{
-		Region: "eu-de",
+		Region: commonOpts.Region,
 	})
 }
 
