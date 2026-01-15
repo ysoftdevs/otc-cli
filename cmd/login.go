@@ -88,24 +88,42 @@ func runLogin(args []string) error {
 	defer allocCancel()
 
 	// Create Chrome context
-	ctx, _ := chromedp.NewContext(
+	ctx, cancel := chromedp.NewContext(
 		allocCtx,
 		chromedp.WithLogf(logf),
 		//chromedp.WithDebugf(logf),
 		//chromedp.WithErrorf(logf),
 	)
-	defer chromedp.Cancel(ctx)
+	defer cancel()
 
+	creds, err := loginInBrowser(ctx, loginArgs)
+	chromedp.Cancel(ctx) // Close browser
+
+	if err != nil {
+		fmt.Printf("Login failed: %v\n", err)
+		return err
+	}
+
+	err = UpdateCloudsWithSTSCredentials(loginArgs.cloudId, loginArgs.domainID, creds)
+	if err != nil {
+		fmt.Printf("Failed to update clouds.yaml: %v\n", err)
+		return err
+	}
+
+	return nil
+}
+
+func loginInBrowser(ctx context.Context, loginArgs loginArgs) (string, error) {
 	fmt.Println("Opening managed browser for login...")
 	fmt.Println("Waiting for authentication...")
 
-	err = chromedp.Run(ctx,
+	err := chromedp.Run(ctx,
 		chromedp.Navigate(loginArgs.buildURL()),
 		chromedp.WaitReady("body", chromedp.ByQuery),
 	)
 	if err != nil {
 		fmt.Printf("Failed to open browser: %v\n", err)
-		return err
+		return "", err
 	}
 
 	// Wait for user to complete login and be redirected to console
@@ -117,49 +135,16 @@ func runLogin(args []string) error {
 	)
 	if err != nil {
 		fmt.Printf("Login timeout or failed: %v\n", err)
-		return err
+		return "", err
 	}
 
 	creds, err := fetchTempCredentials(ctx)
 	if err != nil {
 		fmt.Printf("Failed to fetch credentials: %v\n", err)
-		return err
+		return "", err
 	}
 
-	err = UpdateCloudsWithSTSCredentials(loginArgs.cloudId, loginArgs.domainID, creds)
-	if err != nil {
-		fmt.Printf("Failed to update clouds.yaml: %v\n", err)
-		return err
-	}
-
-	// for true {
-
-	// 	select {
-	// 	case <-redirected:
-	// 		fetchTempCredentials(ctx, errors, credentials)
-
-	// 	case creds := <-credentials:
-	// 		// Update clouds.yaml with the credentials
-	// 		if err := UpdateCloudsWithSTSCredentials(loginArgs.cloudId, loginArgs.domainID, creds); err != nil {
-	// 			fmt.Printf("Failed to update clouds.yaml: %v\n", err)
-	// 			return err
-	// 		}
-
-	// 	case err := <-errors:
-	// 		fmt.Printf("Error during login process: %v\n", err)
-	// 		return err
-	// 	case <-time.After(10 * time.Minute):
-	// 		fmt.Println("Login timed out after 10 minutes.")
-	// 		//cancel()
-	// 		return fmt.Errorf("login timed out")
-
-	// 	case <-ctx.Done():
-	// 		fmt.Println("Browser closed")
-	// 		return fmt.Errorf("Browser closed before login completed")
-	// 	}
-	// }
-
-	return nil
+	return creds, nil
 }
 
 func fetchTempCredentials(ctx context.Context) (string, error) {
