@@ -6,8 +6,8 @@ type CommonConfig struct {
 	Region      string
 	ProjectName string
 
-	clouds        *CloudsYAML
-	selectedCloud *CloudConfig
+	Clouds        *CloudsYAML
+	SelectedCloud *CloudConfig
 }
 
 func (base *CommonConfig) AugmentFromFiles() error {
@@ -16,20 +16,26 @@ func (base *CommonConfig) AugmentFromFiles() error {
 		return err
 	}
 
-	setIfEmpty(&base.CloudName, clouds.SelectedCloud)
-	base.clouds = &clouds
+	SetIfEmpty(&base.CloudName, clouds.SelectedCloud)
+	base.Clouds = &clouds
 
 	if cloud, ok := clouds.Clouds[base.CloudName]; ok {
-		base.selectedCloud = &cloud
-		setIfEmpty(&base.Region, cloud.RegionName)
-		setIfEmpty(&base.ProjectName, cloud.Auth.ProjectName)
+		base.SelectedCloud = &cloud
+		SetIfEmpty(&base.Region, cloud.RegionName)
+		SetIfEmpty(&base.ProjectName, cloud.Auth.ProjectName)
 	}
 
 	return nil
 }
 
-func setIfEmpty(value *string, newValue string) {
+func SetIfEmpty(value *string, newValue string) {
 	if *value == "" {
+		*value = newValue
+	}
+}
+
+func SetIfZero(value *int, newValue int) {
+	if *value == 0 {
 		*value = newValue
 	}
 }

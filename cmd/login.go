@@ -1,11 +1,11 @@
 /*
 Copyright © 2026 NAME HERE <EMAIL ADDRESS>
-
 */
 package cmd
 
 import (
 	"fmt"
+	"otc-cli/config"
 
 	"github.com/spf13/cobra"
 )
@@ -14,30 +14,48 @@ import (
 var loginCmd = &cobra.Command{
 	Use:   "login",
 	Short: "Authenticate user and store credentials",
-	Long: ``,
-	Run: func(cmd *cobra.Command, args []string) {
+	PreRunE: func(cmd *cobra.Command, args []string) error {
 		commonConfig, err := ParseGlobalFlags()
-		
 		if err != nil {
-			fmt.Printf("Error parsing global flags: %s\n", err)
-			return
+			return fmt.Errorf("error parsing global flags: %w", err)
 		}
-		if err := runLogin(commonConfig, args); err != nil {
-			fmt.Printf("Error during login: %s\n", err)
+		loginArgs.commonConfig = commonConfig
+		if cloud := commonConfig.SelectedCloud; cloud != nil {
+			config.SetIfEmpty(&loginArgs.AuthURL, cloud.Auth.AuthURL)
+			config.SetIfEmpty(&loginArgs.DomainID, cloud.Auth.DomainID)
+
+			config.SetIfEmpty(&loginArgs.Protocol, cloud.SSO.Protocol)
+			config.SetIfEmpty(&loginArgs.Idp, cloud.SSO.Idp)
+			config.SetIfEmpty(&loginArgs.BaseURL, cloud.SSO.BaseURL)
+			config.SetIfZero(&loginArgs.Expiration, cloud.SSO.Expiration)
+
+
 		}
+		
+		return nil
 	},
+	RunE: func(cmd *cobra.Command, args []string) error {
+		if err := runLogin(loginArgs); err != nil {
+			return fmt.Errorf("error during login: %w", err)
+		}
+		return nil
+	},
+}
+
+var loginArgs = LoginArgs{
+	BaseURL: "https://auth.otc.t-systems.com/authui/federation/websso",
+	AuthURL: "https://iam.eu-de.otc.t-systems.com/v3",
+	Protocol:   "saml",
+	Expiration: 3600,
 }
 
 func init() {
 	rootCmd.AddCommand(loginCmd)
 
-	// Here you will define your flags and configuration settings.
-
-	// Cobra supports Persistent Flags which will work for this command
-	// and all subcommands, e.g.:
-	// loginCmd.PersistentFlags().String("foo", "", "A help for foo")
-
-	// Cobra supports local flags which will only run when this command
-	// is called directly, e.g.:
-	// loginCmd.Flags().BoolP("toggle", "t", false, "Help message for toggle")
+	loginCmd.Flags().StringVar(&loginArgs.BaseURL, "url", loginArgs.BaseURL, "Base URL for SSO authentication")
+	loginCmd.Flags().StringVar(&loginArgs.AuthURL, "auth-url", loginArgs.AuthURL, "Authentication URL")
+	loginCmd.Flags().StringVar(&loginArgs.DomainID, "domain-id", loginArgs.DomainID, "Domain ID")
+	loginCmd.Flags().StringVar(&loginArgs.Idp, "idp", loginArgs.Idp, "Identity provider")
+	loginCmd.Flags().StringVar(&loginArgs.Protocol, "protocol", loginArgs.Protocol, "Authentication protocol")
+	loginCmd.Flags().IntVar(&loginArgs.Expiration, "expiration", loginArgs.Expiration, "Credential expiration time in seconds")
 }

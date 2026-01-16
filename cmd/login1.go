@@ -3,7 +3,6 @@ package cmd
 import (
 	"context"
 	"encoding/json"
-	"flag"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -21,6 +20,8 @@ type LoginArgs struct {
 	Idp        string
 	Protocol   string
 	Expiration int
+
+	commonConfig *config.CommonConfig
 }
 
 // STSCredentialResponse represents the response from the STS credential endpoint
@@ -37,33 +38,6 @@ type STSCredential struct {
 	Secret        string `json:"secret"`
 	ExpiresAt     string `json:"expires_at"`
 	SecurityToken string `json:"securitytoken"`
-}
-
-func ParseLoginArgs(args []string) (LoginArgs, error) {
-	// Default values
-	la := LoginArgs{
-		BaseURL:    "https://auth.otc.t-systems.com/authui/federation/websso",
-		AuthURL:    "https://iam.eu-de.otc.t-systems.com/v3",
-		DomainID:   "99370f87daf946bba4938c30330cbafd",
-		Idp:        "Y_Soft_Entra_ID_PROD",
-		Protocol:   "saml",
-		Expiration: 3600,
-	}
-
-	// Create flag set for login subcommand
-	fs := flag.NewFlagSet("login", flag.ContinueOnError)
-	fs.StringVar(&la.BaseURL, "url", la.BaseURL, "Base URL for authentication")
-	fs.StringVar(&la.AuthURL, "auth-url", la.AuthURL, "Authentication URL")
-	fs.StringVar(&la.DomainID, "domain-id", la.DomainID, "Domain ID")
-	fs.StringVar(&la.Idp, "idp", la.Idp, "Identity provider")
-	fs.StringVar(&la.Protocol, "protocol", la.Protocol, "Authentication protocol")
-	fs.IntVar(&la.Expiration, "expiration", la.Expiration, "Credential expiration time in seconds")
-
-	if err := fs.Parse(args); err != nil {
-		return la, err
-	}
-
-	return la, nil
 }
 
 func (la LoginArgs) buildURL() string {
@@ -88,12 +62,7 @@ func getUserDataDir() (string, error) {
 	return userDataDir, nil
 }
 
-func runLogin(commonConfig *config.CommonConfig, args []string) error {
-	loginArgs, err := ParseLoginArgs(args)
-	if err != nil {
-		return fmt.Errorf("failed to parse arguments: %w", err)
-	}
-
+func runLogin(loginArgs LoginArgs) error {
 	userDataDir, err := getUserDataDir()
 	if err != nil {
 		return err
@@ -130,7 +99,7 @@ func runLogin(commonConfig *config.CommonConfig, args []string) error {
 		return err
 	}
 
-	err = storeCredentials(creds, &loginArgs, commonConfig)
+	err = storeCredentials(creds, &loginArgs)
 	if err != nil {
 		fmt.Printf("Failed to update clouds.yaml: %v\n", err)
 		return err
@@ -212,7 +181,7 @@ func fetchTempCredentials(ctx context.Context, loginArgs LoginArgs) (string, err
 	}
 }
 
-func storeCredentials(creds string, loginArgs *LoginArgs, commonConfig *config.CommonConfig) error {
+func storeCredentials(creds string, loginArgs *LoginArgs) error {
 	var credResp STSCredentialResponse
 	if err := json.Unmarshal([]byte(creds), &credResp); err != nil {
 		return fmt.Errorf("failed to parse credential response: %w", err)
@@ -222,6 +191,7 @@ func storeCredentials(creds string, loginArgs *LoginArgs, commonConfig *config.C
 		return fmt.Errorf("credential request failed: %s", credResp.RetInfo)
 	}
 
+	commonConfig := loginArgs.commonConfig
 	if err := config.UpdateCloudConfig(commonConfig.CloudName, func(cloud *config.CloudConfig) {
 		cloud.Auth.AuthURL = loginArgs.AuthURL
 		cloud.Auth.DomainID = loginArgs.DomainID
