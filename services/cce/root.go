@@ -1,4 +1,4 @@
-package cmd
+package cce
 
 import (
 	"fmt"
@@ -28,7 +28,7 @@ func getCCEClouds(commonConfig *config.CommonConfig) (*golangsdk.ServiceClient, 
 	})
 }
 
-func runCCEList(commonConfig *config.CommonConfig, args []string) error {
+func List(commonConfig *config.CommonConfig) error {
 	cce, err := getCCEClouds(commonConfig)
 	if err != nil {
 		return fmt.Errorf("failed to create CCE client: %w", err)
@@ -52,15 +52,12 @@ func runCCEList(commonConfig *config.CommonConfig, args []string) error {
 	return nil
 }
 
-func runCCEConfig(commonConfig *config.CommonConfig, clusterName string) error {
+func Config(commonConfig *config.CommonConfig, clusterName string) error {
 	cce, err := getCCEClouds(commonConfig)
 	if err != nil {
 		return fmt.Errorf("failed to create CCE client: %w", err)
 	}
 
-	expiryOpts := clusters.ExpirationOpts{
-		Duration: -1,
-	}
 
 	clusterList, err := clusters.List(cce, clusters.ListOpts{Name: clusterName})
 	if err != nil {
@@ -71,6 +68,9 @@ func runCCEConfig(commonConfig *config.CommonConfig, clusterName string) error {
 		return fmt.Errorf("cluster '%s' not found", clusterName)
 	}
 
+	expiryOpts := clusters.ExpirationOpts{
+		Duration: -1,
+	}
 	kubeconfig, err := clusters.GetCertWithExpiration(cce, clusterList[0].Metadata.Id, expiryOpts)
 	if err != nil {
 		return fmt.Errorf("unable to retrieve cluster kubeconfig: %w", err)

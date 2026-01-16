@@ -3,6 +3,7 @@ package cmd
 import (
 	"fmt"
 
+	"otc-cli/services/cce"
 	"github.com/spf13/cobra"
 )
 
@@ -18,7 +19,7 @@ var listCmd = &cobra.Command{
 			fmt.Printf("Error parsing global flags: %s\n", err)
 			return
 		}
-		if err := runCCEList(commonConfig, args); err != nil {
+		if err := cce.List(commonConfig); err != nil {
 			fmt.Printf("Error listing CCE clusters: %s\n", err)
 		}
 	},

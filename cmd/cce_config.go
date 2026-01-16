@@ -1,11 +1,8 @@
-/*
-Copyright © 2026 NAME HERE <EMAIL ADDRESS>
-*/
 package cmd
 
 import (
 	"fmt"
-
+	"otc-cli/services/cce"
 	"github.com/spf13/cobra"
 )
 
@@ -21,7 +18,7 @@ var configCmd = &cobra.Command{
 			fmt.Printf("Error parsing global flags: %s\n", err)
 			return
 		}
-		if err := runCCEConfig(commonConfig, args[0]); err != nil {
+		if err := cce.Config(commonConfig, args[0]); err != nil {
 			fmt.Printf("Error printing kubeconfig for CCE cluster '%s': %s\n", args[0], err)
 		}
 	},
