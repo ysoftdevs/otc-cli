@@ -1,30 +1,15 @@
 package cmd
 
 import (
-	"flag"
 	"fmt"
 	"os"
-	"otc-cli/config"
 	"otc-cli/client"
+	"otc-cli/config"
 
 	golangsdk "github.com/opentelekomcloud/gophertelekomcloud"
 	"github.com/opentelekomcloud/gophertelekomcloud/openstack"
 	"github.com/opentelekomcloud/gophertelekomcloud/openstack/cce/v3/clusters"
 )
-
-func runCCE(commonConfig *config.CommonConfig, args []string) error {
-	if len(args) < 1 {
-		return fmt.Errorf("no CCE subcommand specified. Available: list")
-	}
-
-	subcommand := args[0]
-	switch subcommand {
-	case "list":
-		return runCCEList(commonConfig, args[1:])
-	default:
-		return fmt.Errorf("unknown CCE subcommand: %s", subcommand)
-	}
-}
 
 func getCCEClouds(commonConfig *config.CommonConfig) (*golangsdk.ServiceClient, error) {
 	opts, err := client.GetAuthOpts(commonConfig)
@@ -43,12 +28,6 @@ func getCCEClouds(commonConfig *config.CommonConfig) (*golangsdk.ServiceClient, 
 }
 
 func runCCEList(commonConfig *config.CommonConfig, args []string) error {
-	fs := flag.NewFlagSet("cce list", flag.ContinueOnError)
-
-	if err := fs.Parse(args); err != nil {
-		return err
-	}
-
 	cce, err := getCCEClouds(commonConfig)
 	if err != nil {
 		return fmt.Errorf("failed to create CCE client: %w", err)
@@ -68,6 +47,35 @@ func runCCEList(commonConfig *config.CommonConfig, args []string) error {
 	for _, cluster := range clusterList {
 		fmt.Println(cluster.Metadata.Name)
 	}
+
+	return nil
+}
+
+func runCCEConfig(commonConfig *config.CommonConfig, clusterName string) error {
+	cce, err := getCCEClouds(commonConfig)
+	if err != nil {
+		return fmt.Errorf("failed to create CCE client: %w", err)
+	}
+
+	expiryOpts := clusters.ExpirationOpts{
+		Duration: -1,
+	}
+
+	clusterList, err := clusters.List(cce, clusters.ListOpts{Name: clusterName})
+	if err != nil {
+		return fmt.Errorf("failed to list clusters: %w", err)
+	}
+
+	if len(clusterList) == 0 {
+		return fmt.Errorf("cluster '%s' not found", clusterName)
+	}
+
+	kubeconfig, err := clusters.GetCertWithExpiration(cce, clusterList[0].Metadata.Id, expiryOpts)
+	if err != nil {
+		return fmt.Errorf("unable to retrieve cluster kubeconfig: %w", err)
+	}
+
+	fmt.Println(kubeconfig)
 
 	return nil
 }
