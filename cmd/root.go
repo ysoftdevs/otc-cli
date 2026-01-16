@@ -1,29 +1,51 @@
 package cmd
 
 import (
-	"errors"
-	"fmt"
 	"os"
+	"otc-cli/config"
+
+	"github.com/spf13/cobra"
 )
 
+// rootCmd represents the base command when called without any subcommands
+var rootCmd = &cobra.Command{
+	Use:   "otc",
+	Short: "CLI tool for Open Telekom Cloud",
+	Long:  `otc is a command-line interface (CLI) tool designed to interact with Open Telekom Cloud services.`,
+}
+
+// Execute adds all child commands to the root command and sets flags appropriately.
+// This is called by main.main(). It only needs to happen once to the rootCmd.
 func Execute() {
-	if err := run(); err != nil {
-		fmt.Fprintln(os.Stderr, err)
+	err := rootCmd.Execute()
+	if err != nil {
 		os.Exit(1)
 	}
 }
 
-func run() error {
-	if len(os.Args) < 2 {
-		return errors.New("no subcommand specified")
-	}
+func init() {
+	// global flags for all commands
+	rootCmd.PersistentFlags().StringP("cloud", "c", "", "Name of the cloud from clouds.yaml to use")
+	rootCmd.PersistentFlags().StringP("region", "r", "", "Region to use for the cloud")
+	rootCmd.PersistentFlags().StringP("project", "p", "", "Project name to use for authentication")
+}
 
-	switch os.Args[1] {
-	case "login":
-		return runLogin(os.Args[2:])
-	case "cce":
-		return runCCE(os.Args[2:])
-	default:
-		return fmt.Errorf("unknown subcommand: %s", os.Args[1])
+func ParseGlobalFlags() (config.CommonConfig, error) {
+	cloudName, err := rootCmd.PersistentFlags().GetString("cloud")
+	if err != nil {
+		return config.CommonConfig{}, err
 	}
+	region, err := rootCmd.PersistentFlags().GetString("region")
+	if err != nil {
+		return config.CommonConfig{}, err
+	}
+	projectName, err := rootCmd.PersistentFlags().GetString("project")
+	if err != nil {
+		return config.CommonConfig{}, err
+	}
+	return config.CommonConfig{
+		CloudName:   cloudName,
+		Region:      region,
+		ProjectName: projectName,
+	}, nil
 }

@@ -1,7 +1,3 @@
-/*
-Copyright © 2026 NAME HERE <EMAIL ADDRESS>
-
-*/
 package cmd
 
 import (
@@ -10,11 +6,11 @@ import (
 	"github.com/spf13/cobra"
 )
 
-// loginCmd represents the login command
-var loginCmd = &cobra.Command{
-	Use:   "login",
-	Short: "Authenticate user and store credentials",
-	Long: ``,
+// listCmd represents the list command
+var listCmd = &cobra.Command{
+	Use:   "list",
+	Short: "List CCE clusters",
+	Long: `List all Cloud Container Engine (CCE) clusters in the specified region.`,
 	Run: func(cmd *cobra.Command, args []string) {
 		commonConfig, err := ParseGlobalFlags()
 		
@@ -22,22 +18,22 @@ var loginCmd = &cobra.Command{
 			fmt.Printf("Error parsing global flags: %s\n", err)
 			return
 		}
-		if err := runLogin(&commonConfig, args); err != nil {
-			fmt.Printf("Error during login: %s\n", err)
+		if err := runCCEList(&commonConfig, args); err != nil {
+			fmt.Printf("Error listing CCE clusters: %s\n", err)
 		}
 	},
 }
 
 func init() {
-	rootCmd.AddCommand(loginCmd)
+	cceCmd.AddCommand(listCmd)
 
 	// Here you will define your flags and configuration settings.
 
 	// Cobra supports Persistent Flags which will work for this command
 	// and all subcommands, e.g.:
-	// loginCmd.PersistentFlags().String("foo", "", "A help for foo")
+	// listCmd.PersistentFlags().String("foo", "", "A help for foo")
 
 	// Cobra supports local flags which will only run when this command
 	// is called directly, e.g.:
-	// loginCmd.Flags().BoolP("toggle", "t", false, "Help message for toggle")
+	// listCmd.Flags().BoolP("toggle", "t", false, "Help message for toggle")
 }

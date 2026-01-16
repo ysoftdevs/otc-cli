@@ -1,78 +1,26 @@
 package cmd
 
 import (
-	"flag"
-	"fmt"
-	"os"
-	"otc-cli/client"
-
-	golangsdk "github.com/opentelekomcloud/gophertelekomcloud"
-	"github.com/opentelekomcloud/gophertelekomcloud/openstack"
-	"github.com/opentelekomcloud/gophertelekomcloud/openstack/cce/v3/clusters"
+	"github.com/spf13/cobra"
 )
 
-func runCCE(commonFlags *CommonFlags, args []string) error {
-	if len(args) < 1 {
-		return fmt.Errorf("no CCE subcommand specified. Available: list")
-	}
-
-	subcommand := args[0]
-	switch subcommand {
-	case "list":
-		return runCCEList(commonFlags, args[1:])
-	default:
-		return fmt.Errorf("unknown CCE subcommand: %s", subcommand)
-	}
+// cceCmd represents the cce command
+var cceCmd = &cobra.Command{
+	Use:   "cce",
+	Short: "Cloud Container Engine (CCE) management",
+	Long: ``,
 }
 
-func getCCEClouds(commonConfig *client.CommonConfig) (*golangsdk.ServiceClient, error) {
-	opts, err := client.GetAuthOpts(commonConfig)
-	if err != nil {
-		return nil, err
-	}
+func init() {
+	rootCmd.AddCommand(cceCmd)
 
-	client, err := client.GetAuthenticatedClient(opts)
-	if err != nil {
-		return nil, fmt.Errorf("failed to authenticate client: %s", err)
-	}
+	// Here you will define your flags and configuration settings.
 
-	return openstack.NewCCE(client, golangsdk.EndpointOpts{
-		Region: commonConfig.Region,
-	})
-}
+	// Cobra supports Persistent Flags which will work for this command
+	// and all subcommands, e.g.:
+	// cceCmd.PersistentFlags().String("foo", "", "A help for foo")
 
-func runCCEList(commonFlags *CommonFlags, args []string) error {
-	fs := flag.NewFlagSet("cce list", flag.ContinueOnError)
-
-	if err := fs.Parse(args); err != nil {
-		return err
-	}
-
-	// Check for positional argument for backward compatibility (project name)
-	if commonFlags.Project == "" && fs.NArg() > 0 {
-		commonFlags.Project = fs.Arg(0)
-	}
-
-	commonConfig := commonFlags.ToCommonConfig()
-	cce, err := getCCEClouds(commonConfig)
-	if err != nil {
-		return fmt.Errorf("failed to create CCE client: %w", err)
-	}
-
-	clusterList, err := clusters.List(cce, clusters.ListOpts{})
-	if err != nil {
-		return fmt.Errorf("failed to list clusters: %w", err)
-	}
-
-	// Print cluster names
-	if len(clusterList) == 0 {
-		fmt.Fprintln(os.Stderr, "No CCE clusters found")
-		return nil
-	}
-
-	for _, cluster := range clusterList {
-		fmt.Println(cluster.Metadata.Name)
-	}
-
-	return nil
+	// Cobra supports local flags which will only run when this command
+	// is called directly, e.g.:
+	// cceCmd.Flags().BoolP("toggle", "t", false, "Help message for toggle")
 }

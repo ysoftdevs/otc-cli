@@ -5,16 +5,10 @@ import (
 
 	golangsdk "github.com/opentelekomcloud/gophertelekomcloud"
 	"github.com/opentelekomcloud/gophertelekomcloud/openstack"
+	"otc-cli/config"
 )
 
-type CommonConfig struct {
-	EnvPrefix   string
-	CloudName   string
-	Region      string
-	ProjectName string
-}
-
-func GetAuthOpts(config *CommonConfig) (golangsdk.AuthOptionsProvider, error) {
+func GetAuthOpts(config *config.CommonConfig) (golangsdk.AuthOptionsProvider, error) {
 	env := openstack.NewEnv(config.EnvPrefix)
 
 	var cloud *openstack.Cloud
@@ -40,7 +34,7 @@ func GetAuthOpts(config *CommonConfig) (golangsdk.AuthOptionsProvider, error) {
 		setIfEmpty(&akskOpts.SecurityToken, cloud.AuthInfo.SecurityToken)
 
 		setIfEmpty(&akskOpts.ProjectName, config.ProjectName)
-		
+
 		return akskOpts, nil
 	} else if pwOpts, ok := opts.(golangsdk.AuthOptions); ok {
 		setIfEmpty(&pwOpts.TenantName, config.ProjectName)
