@@ -9,6 +9,7 @@ import (
 	golangsdk "github.com/opentelekomcloud/gophertelekomcloud"
 	"github.com/opentelekomcloud/gophertelekomcloud/openstack"
 	"github.com/opentelekomcloud/gophertelekomcloud/openstack/cce/v3/clusters"
+	"gopkg.in/yaml.v2"
 )
 
 func getCCEClouds(commonConfig *config.CommonConfig) (*golangsdk.ServiceClient, error) {
@@ -75,7 +76,12 @@ func runCCEConfig(commonConfig *config.CommonConfig, clusterName string) error {
 		return fmt.Errorf("unable to retrieve cluster kubeconfig: %w", err)
 	}
 
-	fmt.Println(kubeconfig)
+	configYaml, err := yaml.Marshal(kubeconfig)
+	if err != nil {
+		return fmt.Errorf("unable to marshal cluster kubeconfig: %w", err)
+	}
+
+	fmt.Println(string(configYaml))
 
 	return nil
 }
