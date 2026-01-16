@@ -6,6 +6,7 @@ package cmd
 import (
 	"fmt"
 	"otc-cli/config"
+	"otc-cli/services/browser/login"
 
 	"github.com/spf13/cobra"
 )
@@ -19,7 +20,7 @@ var loginCmd = &cobra.Command{
 		if err != nil {
 			return fmt.Errorf("error parsing global flags: %w", err)
 		}
-		loginArgs.commonConfig = commonConfig
+		loginArgs.CommonConfig = commonConfig
 		if cloud := commonConfig.SelectedCloud; cloud != nil {
 			config.SetIfEmpty(&loginArgs.AuthURL, cloud.Auth.AuthURL)
 			config.SetIfEmpty(&loginArgs.DomainID, cloud.Auth.DomainID)
@@ -29,22 +30,21 @@ var loginCmd = &cobra.Command{
 			config.SetIfEmpty(&loginArgs.BaseURL, cloud.SSO.BaseURL)
 			config.SetIfZero(&loginArgs.Expiration, cloud.SSO.Expiration)
 
-
 		}
-		
+
 		return nil
 	},
 	RunE: func(cmd *cobra.Command, args []string) error {
-		if err := runLogin(loginArgs); err != nil {
+		if err := login.BrowserLogin(loginArgs); err != nil {
 			return fmt.Errorf("error during login: %w", err)
 		}
 		return nil
 	},
 }
 
-var loginArgs = LoginArgs{
-	BaseURL: "https://auth.otc.t-systems.com/authui/federation/websso",
-	AuthURL: "https://iam.eu-de.otc.t-systems.com/v3",
+var loginArgs = login.LoginArgs{
+	BaseURL:    "https://auth.otc.t-systems.com/authui/federation/websso",
+	AuthURL:    "https://iam.eu-de.otc.t-systems.com/v3",
 	Protocol:   "saml",
 	Expiration: 3600,
 }

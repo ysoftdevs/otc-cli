@@ -1,4 +1,4 @@
-package cmd
+package login
 
 import (
 	"context"
@@ -21,7 +21,7 @@ type LoginArgs struct {
 	Protocol   string
 	Expiration int
 
-	commonConfig *config.CommonConfig
+	CommonConfig *config.CommonConfig
 }
 
 // STSCredentialResponse represents the response from the STS credential endpoint
@@ -62,7 +62,7 @@ func getUserDataDir() (string, error) {
 	return userDataDir, nil
 }
 
-func runLogin(loginArgs LoginArgs) error {
+func BrowserLogin(loginArgs LoginArgs) error {
 	userDataDir, err := getUserDataDir()
 	if err != nil {
 		return err
@@ -148,7 +148,7 @@ func fetchTempCredentials(ctx context.Context, loginArgs LoginArgs) (string, err
 	var creds string
 	var err error
 
-	for i := 0; i < 10; i++ {
+	for range 10 {
 		err = chromedp.Run(ctx,
 			chromedp.Evaluate(fmt.Sprintf(`
 						__credentials__ = null;
@@ -191,7 +191,7 @@ func storeCredentials(creds string, loginArgs *LoginArgs) error {
 		return fmt.Errorf("credential request failed: %s", credResp.RetInfo)
 	}
 
-	commonConfig := loginArgs.commonConfig
+	commonConfig := loginArgs.CommonConfig
 	if err := config.UpdateCloudConfig(commonConfig.CloudName, func(cloud *config.CloudConfig) {
 		cloud.Auth.AuthURL = loginArgs.AuthURL
 		cloud.Auth.DomainID = loginArgs.DomainID
