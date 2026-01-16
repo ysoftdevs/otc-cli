@@ -3,23 +3,25 @@ package cmd
 import (
 	"context"
 	"encoding/json"
+	"flag"
 	"fmt"
 	"os"
 	"path/filepath"
 	"time"
 
 	"otc-cli/config"
+
 	"github.com/chromedp/chromedp"
 )
 
-type loginArgs struct {
-	baseURL  string
-	domainID string
-	idp      string
-	protocol string
-	cloudId  string
+type LoginArgs struct {
+	BaseURL    string
+	AuthURL    string
+	DomainID   string
+	Idp        string
+	Protocol   string
+	Expiration int
 }
-
 
 // STSCredentialResponse represents the response from the STS credential endpoint
 type STSCredentialResponse struct {
@@ -37,34 +39,36 @@ type STSCredential struct {
 	SecurityToken string `json:"securitytoken"`
 }
 
-func parseLoginArgs(args []string) loginArgs {
+func ParseLoginArgs(args []string) (LoginArgs, error) {
 	// Default values
-	la := loginArgs{
-		baseURL:  "https://auth.otc.t-systems.com/authui/federation/websso",
-		domainID: "99370f87daf946bba4938c30330cbafd",
-		idp:      "Y_Soft_Entra_ID_PROD",
-		protocol: "saml",
-		cloudId:  "otc-prod",
+	la := LoginArgs{
+		BaseURL:    "https://auth.otc.t-systems.com/authui/federation/websso",
+		AuthURL:    "https://iam.eu-de.otc.t-systems.com/v3",
+		DomainID:   "99370f87daf946bba4938c30330cbafd",
+		Idp:        "Y_Soft_Entra_ID_PROD",
+		Protocol:   "saml",
+		Expiration: 3600,
 	}
 
-	// Parse arguments (if provided)
-	// Usage: login [domain_id] [idp] [protocol]
-	if len(args) > 0 {
-		la.domainID = args[0]
-	}
-	if len(args) > 1 {
-		la.idp = args[1]
-	}
-	if len(args) > 2 {
-		la.protocol = args[2]
+	// Create flag set for login subcommand
+	fs := flag.NewFlagSet("login", flag.ContinueOnError)
+	fs.StringVar(&la.BaseURL, "url", la.BaseURL, "Base URL for authentication")
+	fs.StringVar(&la.AuthURL, "auth-url", la.AuthURL, "Authentication URL")
+	fs.StringVar(&la.DomainID, "domain-id", la.DomainID, "Domain ID")
+	fs.StringVar(&la.Idp, "idp", la.Idp, "Identity provider")
+	fs.StringVar(&la.Protocol, "protocol", la.Protocol, "Authentication protocol")
+	fs.IntVar(&la.Expiration, "expiration", la.Expiration, "Credential expiration time in seconds")
+
+	if err := fs.Parse(args); err != nil {
+		return la, err
 	}
 
-	return la
+	return la, nil
 }
 
-func (la loginArgs) buildURL() string {
+func (la LoginArgs) buildURL() string {
 	return fmt.Sprintf("%s?domain_id=%s&idp=%s&protocol=%s",
-		la.baseURL, la.domainID, la.idp, la.protocol)
+		la.BaseURL, la.DomainID, la.Idp, la.Protocol)
 }
 
 func getUserDataDir() (string, error) {
@@ -84,8 +88,11 @@ func getUserDataDir() (string, error) {
 	return userDataDir, nil
 }
 
-func runLogin(args []string) error {
-	loginArgs := parseLoginArgs(args)
+func runLogin(commonFlags *CommonFlags, args []string) error {
+	loginArgs, err := ParseLoginArgs(args)
+	if err != nil {
+		return fmt.Errorf("failed to parse arguments: %w", err)
+	}
 
 	userDataDir, err := getUserDataDir()
 	if err != nil {
@@ -123,7 +130,7 @@ func runLogin(args []string) error {
 		return err
 	}
 
-	err = storeCredentials(creds, &loginArgs)
+	err = storeCredentials(creds, &loginArgs, commonFlags)
 	if err != nil {
 		fmt.Printf("Failed to update clouds.yaml: %v\n", err)
 		return err
@@ -132,7 +139,7 @@ func runLogin(args []string) error {
 	return nil
 }
 
-func loginInBrowser(ctx context.Context, loginArgs loginArgs) (string, error) {
+func loginInBrowser(ctx context.Context, loginArgs LoginArgs) (string, error) {
 	fmt.Println("Opening managed browser for login...")
 	fmt.Println("Waiting for authentication...")
 
@@ -173,7 +180,7 @@ func fetchTempCredentials(ctx context.Context) (string, error) {
 	err := chromedp.Run(ctx,
 		chromedp.Evaluate(`
 					__credentials__ = null;
-					fetch('https://console.otc.t-systems.com/iam/server/aklist?type=sts&duration=54000', {
+					fetch('/iam/server/aklist?type=sts&duration=${}', {
 						method: 'GET',
 						credentials: 'include'
 					})
@@ -191,7 +198,7 @@ func fetchTempCredentials(ctx context.Context) (string, error) {
 	}
 }
 
-func storeCredentials(creds string, loginArgs *loginArgs) error {
+func storeCredentials(creds string, loginArgs *LoginArgs, commonFlags *CommonFlags) error {
 	var credResp STSCredentialResponse
 	if err := json.Unmarshal([]byte(creds), &credResp); err != nil {
 		return fmt.Errorf("failed to parse credential response: %w", err)
@@ -201,18 +208,18 @@ func storeCredentials(creds string, loginArgs *loginArgs) error {
 		return fmt.Errorf("credential request failed: %s", credResp.RetInfo)
 	}
 
-	if err := config.UpdateCloudConfig(loginArgs.cloudId, func(cloud *config.CloudConfig) {
-		cloud.Auth.AuthURL = "https://iam.eu-de.otc.t-systems.com/v3"
-		cloud.Auth.DomainID = loginArgs.domainID
+	if err := config.UpdateCloudConfig(commonFlags.Cloud, func(cloud *config.CloudConfig) {
+		cloud.Auth.AuthURL = loginArgs.AuthURL
+		cloud.Auth.DomainID = loginArgs.DomainID
 		cloud.Auth.AccessKey = credResp.Data.Credential.Access
 		cloud.Auth.SecretKey = credResp.Data.Credential.Secret
 		cloud.Auth.SecurityToken = credResp.Data.Credential.SecurityToken
 		cloud.AuthType = "aksk"
-		cloud.RegionName = "eu-de"
+		cloud.RegionName = commonFlags.Region
 	}); err != nil {
 		return err
 	}
-	fmt.Printf("Credentials stored in clouds.yaml under cloud '%s'\n", loginArgs.cloudId)
+	fmt.Printf("Credentials stored in clouds.yaml under cloud '%s'\n", commonFlags.Cloud)
 	return nil
 }
 

@@ -1,6 +1,7 @@
 package cmd
 
 import (
+	"flag"
 	"fmt"
 	"os"
 	"otc-cli/client"
@@ -10,7 +11,7 @@ import (
 	"github.com/opentelekomcloud/gophertelekomcloud/openstack/cce/v3/clusters"
 )
 
-func runCCE(args []string) error {
+func runCCE(commonFlags *CommonFlags, args []string) error {
 	if len(args) < 1 {
 		return fmt.Errorf("no CCE subcommand specified. Available: list")
 	}
@@ -18,33 +19,16 @@ func runCCE(args []string) error {
 	subcommand := args[0]
 	switch subcommand {
 	case "list":
-		return runCCEList(args[1:])
+		return runCCEList(commonFlags, args[1:])
 	default:
 		return fmt.Errorf("unknown CCE subcommand: %s", subcommand)
 	}
 }
 
-func getCCEClouds(projectName string) (*golangsdk.ServiceClient, error) {
-	commonOpts := &client.CommonConfig{
-		EnvPrefix:   "OTC_",
-		CloudName:   "otc-prod",
-		Region:      "eu-de",
-		ProjectName: projectName,
-	}
-
-	opts, err := client.GetAuthOpts(commonOpts)
+func getCCEClouds(commonConfig *client.CommonConfig) (*golangsdk.ServiceClient, error) {
+	opts, err := client.GetAuthOpts(commonConfig)
 	if err != nil {
 		return nil, err
-	}
-
-	if projectName != "" {
-		if akOpts, ok := opts.(golangsdk.AKSKAuthOptions); ok {
-			akOpts.ProjectName = projectName
-			opts = akOpts
-		} else if pwOpts, ok := opts.(golangsdk.AuthOptions); ok {
-			pwOpts.TenantName = projectName
-			opts = pwOpts
-		}
 	}
 
 	client, err := client.GetAuthenticatedClient(opts)
@@ -53,20 +37,24 @@ func getCCEClouds(projectName string) (*golangsdk.ServiceClient, error) {
 	}
 
 	return openstack.NewCCE(client, golangsdk.EndpointOpts{
-		Region: commonOpts.Region,
+		Region: commonConfig.Region,
 	})
 }
 
+func runCCEList(commonFlags *CommonFlags, args []string) error {
+	fs := flag.NewFlagSet("cce list", flag.ContinueOnError)
 
-
-func runCCEList(args []string) error {
-	projectName := ""
-	if len(args) >= 1 {
-		projectName = args[0]
+	if err := fs.Parse(args); err != nil {
+		return err
 	}
 
+	// Check for positional argument for backward compatibility (project name)
+	if commonFlags.Project == "" && fs.NArg() > 0 {
+		commonFlags.Project = fs.Arg(0)
+	}
 
-	cce, err := getCCEClouds(projectName)
+	commonConfig := commonFlags.ToCommonConfig()
+	cce, err := getCCEClouds(commonConfig)
 	if err != nil {
 		return fmt.Errorf("failed to create CCE client: %w", err)
 	}

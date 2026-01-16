@@ -10,13 +10,15 @@ import (
 
 // CloudsYAML represents the root structure of clouds.yaml
 type CloudsYAML struct {
-	Clouds map[string]CloudConfig `yaml:"clouds"`
-	Extra  map[string]interface{} `yaml:",inline"`
+	SelectedCloud string                 `yaml:"selected_cloud,omitempty"`
+	Clouds        map[string]CloudConfig `yaml:"clouds"`
+	Extra         map[string]interface{} `yaml:",inline"`
 }
 
 // CloudConfig represents a single cloud configuration
 type CloudConfig struct {
 	Auth        AuthConfig             `yaml:"auth"`
+	SSO         SSOConfig              `yaml:"sso,omitempty"`
 	RegionName  string                 `yaml:"region_name,omitempty"`
 	Cloud       string                 `yaml:"cloud,omitempty"`
 	Interface   string                 `yaml:"interface,omitempty"`
@@ -48,7 +50,15 @@ type AuthConfig struct {
 	Extra                       map[string]interface{} `yaml:",inline"`
 }
 
-func LoadCloudsYAMLFromDefaultLocation() (CloudsYAML, error){
+type SSOConfig struct {
+	BaseURL    string                 `yaml:"base_url,omitempty"`
+	Idp        string                 `yaml:"idp,omitempty"`
+	Protocol   string                 `yaml:"protocol,omitempty"`
+	Expiration int                    `yaml:"expiration,omitempty"`
+	Extra      map[string]interface{} `yaml:",inline"`
+}
+
+func LoadCloudsYAMLFromDefaultLocation() (CloudsYAML, error) {
 	cloudsPath, err := GetCloudsYAMLPath()
 	if err != nil {
 		return CloudsYAML{}, err
