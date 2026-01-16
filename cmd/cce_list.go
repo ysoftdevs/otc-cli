@@ -11,7 +11,7 @@ import (
 var listCmd = &cobra.Command{
 	Use:   "list",
 	Short: "List CCE clusters",
-	Long: `List all Cloud Container Engine (CCE) clusters in the specified region.`,
+	Long: `List all Cloud Container Engine (CCE) clusters in the specified region and project.`,
 	Run: func(cmd *cobra.Command, args []string) {
 		commonConfig, err := ParseGlobalFlags()
 

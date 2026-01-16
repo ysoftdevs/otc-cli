@@ -11,7 +11,7 @@ import (
 // listCmd represents the list command
 var ecsListCmd = &cobra.Command{
 	Use:   "list",
-	Short: "A brief description of your command",
+	Short: "List ECS servers",
 	PreRunE: func(cmd *cobra.Command, args []string) error {
 		commonConfig, err := ParseGlobalFlags()
 		if err != nil {
