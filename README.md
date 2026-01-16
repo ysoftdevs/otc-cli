@@ -22,13 +22,13 @@ go build -o otc .
 
 ### Pre-built Binaries
 
-Download the latest release for your platform from the [Releases](https://github.com/yourusername/otc-cli/releases) page.
+Download the latest release for your platform from the [Releases](https://github.com/ysoftdevs/otc-cli/releases) page.
 
 ## Configuration
 
 ### clouds.yaml
 
-Create a `clouds.yaml` file in your home directory (`~/.config/otc/clouds.yaml` or `~/.otc/clouds.yaml`):
+Create a `clouds.yaml` file in your home directory (`~/.config/otc/clouds.yaml`):
 
 ```yaml
 clouds:
@@ -82,7 +82,7 @@ otc login \
 
 ### ECS (Elastic Cloud Server)
 
-List all ECS instances:
+List ECS instances from cloud and region specified in config files:
 
 ```bash
 otc ecs list
