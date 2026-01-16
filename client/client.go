@@ -3,9 +3,10 @@ package client
 import (
 	"fmt"
 
+	"otc-cli/config"
+
 	golangsdk "github.com/opentelekomcloud/gophertelekomcloud"
 	"github.com/opentelekomcloud/gophertelekomcloud/openstack"
-	"otc-cli/config"
 )
 
 func GetAuthOpts(config *config.CommonConfig) (golangsdk.AuthOptionsProvider, error) {
@@ -33,11 +34,15 @@ func GetAuthOpts(config *config.CommonConfig) (golangsdk.AuthOptionsProvider, er
 		// There is a bug in AuthOptionsFromInfo where SecurityToken is not set from AuthInfo
 		setIfEmpty(&akskOpts.SecurityToken, cloud.AuthInfo.SecurityToken)
 
-		setIfEmpty(&akskOpts.ProjectName, config.ProjectName)
+		if config.ProjectName != "" {
+			akskOpts.ProjectName = config.ProjectName
+		}
 
 		return akskOpts, nil
 	} else if pwOpts, ok := opts.(golangsdk.AuthOptions); ok {
-		setIfEmpty(&pwOpts.TenantName, config.ProjectName)
+		if config.ProjectName != "" {
+			pwOpts.TenantName = config.ProjectName
+		}
 		return pwOpts, nil
 	}
 	return opts, nil
