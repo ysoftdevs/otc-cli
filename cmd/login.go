@@ -22,7 +22,7 @@ var loginCmd = &cobra.Command{
 			fmt.Printf("Error parsing global flags: %s\n", err)
 			return
 		}
-		if err := runLogin(&commonConfig, args); err != nil {
+		if err := runLogin(commonConfig, args); err != nil {
 			fmt.Printf("Error during login: %s\n", err)
 		}
 	},

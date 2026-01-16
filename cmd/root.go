@@ -30,22 +30,29 @@ func init() {
 	rootCmd.PersistentFlags().StringP("project", "p", "", "Project name to use for authentication")
 }
 
-func ParseGlobalFlags() (config.CommonConfig, error) {
+func ParseGlobalFlags() (*config.CommonConfig, error) {
 	cloudName, err := rootCmd.PersistentFlags().GetString("cloud")
 	if err != nil {
-		return config.CommonConfig{}, err
+		return nil, err
 	}
 	region, err := rootCmd.PersistentFlags().GetString("region")
 	if err != nil {
-		return config.CommonConfig{}, err
+		return nil, err
 	}
 	projectName, err := rootCmd.PersistentFlags().GetString("project")
 	if err != nil {
-		return config.CommonConfig{}, err
+		return nil, err
 	}
-	return config.CommonConfig{
+	config := config.CommonConfig{
+		EnvPrefix:   "OTC_",
 		CloudName:   cloudName,
 		Region:      region,
 		ProjectName: projectName,
-	}, nil
+	}
+
+	if err := config.AugmentFromFiles(); err != nil {
+		return nil, err
+	}
+
+	return &config, nil
 }

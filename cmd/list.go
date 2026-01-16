@@ -13,12 +13,12 @@ var listCmd = &cobra.Command{
 	Long: `List all Cloud Container Engine (CCE) clusters in the specified region.`,
 	Run: func(cmd *cobra.Command, args []string) {
 		commonConfig, err := ParseGlobalFlags()
-		
+
 		if err != nil {
 			fmt.Printf("Error parsing global flags: %s\n", err)
 			return
 		}
-		if err := runCCEList(&commonConfig, args); err != nil {
+		if err := runCCEList(commonConfig, args); err != nil {
 			fmt.Printf("Error listing CCE clusters: %s\n", err)
 		}
 	},
