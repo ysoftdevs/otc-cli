@@ -14,6 +14,8 @@ var rootCmd = &cobra.Command{
 	Long:  `otc is a command-line interface (CLI) tool designed to interact with Open Telekom Cloud services.`,
 }
 
+var format string
+
 // Execute adds all child commands to the root command and sets flags appropriately.
 // This is called by main.main(). It only needs to happen once to the rootCmd.
 func Execute() {
@@ -29,6 +31,7 @@ func init() {
 	rootCmd.PersistentFlags().StringP("region", "r", "", "Region to use for the cloud")
 	rootCmd.PersistentFlags().StringP("project", "p", "", "Project name to use for authentication")
 }
+
 
 func ParseGlobalFlags() (*config.CommonConfig, error) {
 	cloudName, err := rootCmd.PersistentFlags().GetString("cloud")

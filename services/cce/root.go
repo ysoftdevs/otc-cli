@@ -28,28 +28,18 @@ func getCCEClouds(commonConfig *config.CommonConfig) (*golangsdk.ServiceClient, 
 	})
 }
 
-func List(commonConfig *config.CommonConfig) error {
+func List(commonConfig *config.CommonConfig) ([]clusters.Clusters, error) {
 	cce, err := getCCEClouds(commonConfig)
 	if err != nil {
-		return fmt.Errorf("failed to create CCE client: %w", err)
+		return nil, fmt.Errorf("failed to create CCE client: %w", err)
 	}
 
 	clusterList, err := clusters.List(cce, clusters.ListOpts{})
 	if err != nil {
-		return fmt.Errorf("failed to list clusters: %w", err)
+		return nil, fmt.Errorf("failed to list clusters: %w", err)
 	}
 
-	// Print cluster names
-	if len(clusterList) == 0 {
-		fmt.Fprintln(os.Stderr, "No CCE clusters found")
-		return nil
-	}
-
-	for _, cluster := range clusterList {
-		fmt.Println(cluster.Metadata.Name)
-	}
-
-	return nil
+	return clusterList, nil
 }
 
 type ConfigArgs struct {

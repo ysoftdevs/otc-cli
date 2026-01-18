@@ -28,7 +28,7 @@ var ecsListCmd = &cobra.Command{
 		if err != nil {
 			return err
 		}
-		return formats.PrintFormatted(ecsListFormat, servers, serversTableView())
+		return formats.PrintFormatted(format, servers, serversTableView())
 	},
 }
 
@@ -36,14 +36,13 @@ var ecsListArgs = ecs.ListArgs{
 	Filter: "",
 	Limit:  0,
 }
-var ecsListFormat string
 
 func init() {
 	ecsCmd.AddCommand(ecsListCmd)
 
 	ecsListCmd.Flags().StringVar(&ecsListArgs.Filter, "filter", ecsListArgs.Filter, "Filter servers by name")
 	ecsListCmd.Flags().IntVar(&ecsListArgs.Limit, "limit", ecsListArgs.Limit, "Limit the number of servers listed")
-	ecsListCmd.Flags().StringVar(&ecsListFormat, "format", "table", "Output format: table, json, yaml")
+	ecsListCmd.Flags().StringVar(&format, "format", "table", "Output format: table, json, yaml")
 }
 
 func serversTableView() formats.View[servers.Server] {
