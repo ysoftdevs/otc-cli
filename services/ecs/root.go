@@ -2,7 +2,6 @@ package ecs
 
 import (
 	"fmt"
-	"os"
 	"otc-cli/client"
 	"otc-cli/config"
 
@@ -33,10 +32,10 @@ type ListArgs struct {
 	CommonConfig *config.CommonConfig
 }
 
-func List(args ListArgs) error {
+func List(args ListArgs) ([]servers.Server, error) {
 	compute, err := getComputeClouds(args.CommonConfig)
 	if err != nil {
-		return fmt.Errorf("failed to create Compute client: %w", err)
+		return nil, fmt.Errorf("failed to create Compute client: %w", err)
 	}
 
 	opts := servers.ListOpts{}
@@ -49,28 +48,18 @@ func List(args ListArgs) error {
 
 	serverPage := servers.List(compute, opts)
 	if serverPage.Err != nil {
-		return fmt.Errorf("failed to list servers: %w", serverPage.Err)
+		return nil, fmt.Errorf("failed to list servers: %w", serverPage.Err)
 	}
 
 	allPages, err := serverPage.AllPages()
 	if err != nil {
-		return fmt.Errorf("failed to get all pages of servers: %w", err)
+		return nil, fmt.Errorf("failed to get all pages of servers: %w", err)
 	}
 
 	serverList, err := servers.ExtractServers(allPages)
 	if err != nil {
-		return fmt.Errorf("failed to extract servers: %w", err)
+		return nil, fmt.Errorf("failed to extract servers: %w", err)
 	}
 
-	// Print server names
-	if len(serverList) == 0 {
-		fmt.Fprintln(os.Stderr, "No ECS servers found")
-		return nil
-	}
-
-	for _, server := range serverList {
-		fmt.Println(server.Name)
-	}
-
-	return nil
+	return serverList, nil
 }
