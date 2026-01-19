@@ -15,7 +15,7 @@ A command-line interface (CLI) tool for Open Telekom Cloud (OTC) services.
 ### From Source
 
 ```bash
-git clone https://github.com/yourusername/otc-cli.git
+git clone https://github.com/ysoftdevs/otc-cli.git
 cd otc-cli
 go build -o otc .
 ```
