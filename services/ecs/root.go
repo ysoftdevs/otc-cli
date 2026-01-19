@@ -7,6 +7,7 @@ import (
 
 	golangsdk "github.com/opentelekomcloud/gophertelekomcloud"
 	"github.com/opentelekomcloud/gophertelekomcloud/openstack"
+	"github.com/opentelekomcloud/gophertelekomcloud/openstack/compute/v2/extensions/startstop"
 	"github.com/opentelekomcloud/gophertelekomcloud/openstack/compute/v2/servers"
 )
 
@@ -62,4 +63,69 @@ func List(args ListArgs) ([]servers.Server, error) {
 	}
 
 	return serverList, nil
+}
+
+func getServerByName(compute *golangsdk.ServiceClient, name string) (*servers.Server, error) {
+	opts := servers.ListOpts{
+		Name:  name,
+		Limit: 2,
+	}
+
+	serverPage := servers.List(compute, opts)
+	if serverPage.Err != nil {
+		return nil, fmt.Errorf("failed to list servers: %w", serverPage.Err)
+	}
+
+	allPages, err := serverPage.AllPages()
+	if err != nil {
+		return nil, fmt.Errorf("failed to get all pages of servers: %w", err)
+	}
+
+	serverList, err := servers.ExtractServers(allPages)
+	if err != nil {
+		return nil, fmt.Errorf("failed to extract servers: %w", err)
+	}
+
+	if len(serverList) != 1 {
+		return nil, fmt.Errorf("expected exactly one server with name %s, but found %d", name, len(serverList))
+	}
+
+	return &serverList[0], nil
+}
+
+func StartServer(name string, commonConfig *config.CommonConfig) error {
+	compute, err := getComputeClouds(commonConfig)
+	if err != nil {
+		return fmt.Errorf("failed to create Compute client: %w", err)
+	}
+
+	server, err := getServerByName(compute, name)
+	if err != nil {
+		return err
+	}
+
+	err = startstop.Start(compute, server.ID).ExtractErr()
+	if err != nil {
+		return fmt.Errorf("failed to start server %s: %w", name, err)
+	}
+
+	return nil
+}
+
+func StopServer(name string, commonConfig *config.CommonConfig) error {
+	compute, err := getComputeClouds(commonConfig)
+	if err != nil {
+		return fmt.Errorf("failed to create Compute client: %w", err)
+	}
+
+	server, err := getServerByName(compute, name)
+	if err != nil {
+		return err
+	}
+
+	err = startstop.Stop(compute, server.ID).ExtractErr()
+	if err != nil {
+		return fmt.Errorf("failed to stop server %s: %w", name, err)
+	}
+	return nil
 }
