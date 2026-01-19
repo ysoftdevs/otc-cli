@@ -28,7 +28,7 @@ Download the latest release for your platform from the [Releases](https://github
 
 ### clouds.yaml
 
-Create a `clouds.yaml` file in your home directory (`~/.config/otc/clouds.yaml`):
+Create a `clouds.yaml` file in your home directory (`~/.config/openstack/clouds.yaml`):
 
 ```yaml
 clouds:
