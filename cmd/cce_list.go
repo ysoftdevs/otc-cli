@@ -14,14 +14,8 @@ import (
 var listCmd = &cobra.Command{
 	Use:   "list",
 	Short: "List CCE clusters",
-	Long: `List all Cloud Container Engine (CCE) clusters in the specified region and project.`,
+	Long:  `List all Cloud Container Engine (CCE) clusters in the specified region and project.`,
 	RunE: func(cmd *cobra.Command, args []string) error {
-		commonConfig, err := ParseGlobalFlags()
-
-		if err != nil {
-			fmt.Printf("Error parsing global flags: %s\n", err)
-			return err
-		}
 		clusters, err := cce.List(commonConfig)
 		if err != nil {
 			fmt.Printf("Error listing CCE clusters: %s\n", err)
@@ -34,8 +28,7 @@ var listCmd = &cobra.Command{
 
 func init() {
 	cceCmd.AddCommand(listCmd)
-
-	listCmd.Flags().StringVar(&format, "format", "table", "Output format: table, json, yaml")
+	initFlagFormat(listCmd)
 }
 
 func clustersTableView() formats.View[clusters.Clusters] {

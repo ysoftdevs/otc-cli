@@ -1,7 +1,6 @@
 package cmd
 
 import (
-	"fmt"
 	"time"
 
 	"otc-cli/formats"
@@ -15,14 +14,6 @@ import (
 var ecsListCmd = &cobra.Command{
 	Use:   "list",
 	Short: "List ECS servers",
-	PreRunE: func(cmd *cobra.Command, args []string) error {
-		commonConfig, err := ParseGlobalFlags()
-		if err != nil {
-			return fmt.Errorf("error parsing global flags: %w", err)
-		}
-		ecsListArgs.CommonConfig = commonConfig
-		return nil
-	},
 	RunE: func(cmd *cobra.Command, args []string) error {
 		servers, err := ecs.List(ecsListArgs)
 		if err != nil {
@@ -33,8 +24,9 @@ var ecsListCmd = &cobra.Command{
 }
 
 var ecsListArgs = ecs.ListArgs{
-	Filter: "",
-	Limit:  0,
+	Filter:       "",
+	Limit:        0,
+	CommonConfig: commonConfig,
 }
 
 func init() {
@@ -42,7 +34,7 @@ func init() {
 
 	ecsListCmd.Flags().StringVar(&ecsListArgs.Filter, "filter", ecsListArgs.Filter, "Filter servers by name")
 	ecsListCmd.Flags().IntVar(&ecsListArgs.Limit, "limit", ecsListArgs.Limit, "Limit the number of servers listed")
-	ecsListCmd.Flags().StringVar(&format, "format", "table", "Output format: table, json, yaml")
+	initFlagFormat(ecsListCmd)
 }
 
 func serversTableView() formats.View[servers.Server] {

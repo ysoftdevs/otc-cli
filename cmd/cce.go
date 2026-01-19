@@ -8,7 +8,6 @@ import (
 var cceCmd = &cobra.Command{
 	Use:   "cce",
 	Short: "Cloud Container Engine (CCE) management",
-	Long: ``,
 }
 
 func init() {

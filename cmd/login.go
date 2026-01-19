@@ -13,11 +13,6 @@ var loginCmd = &cobra.Command{
 	Use:   "login",
 	Short: "Authenticate user and store credentials",
 	PreRunE: func(cmd *cobra.Command, args []string) error {
-		commonConfig, err := ParseGlobalFlags()
-		if err != nil {
-			return fmt.Errorf("error parsing global flags: %w", err)
-		}
-		loginArgs.CommonConfig = commonConfig
 		if cloud := commonConfig.SelectedCloud; cloud != nil {
 			config.SetIfEmpty(&loginArgs.AuthURL, cloud.Auth.AuthURL)
 			config.SetIfEmpty(&loginArgs.DomainID, cloud.Auth.DomainID)
@@ -26,7 +21,6 @@ var loginCmd = &cobra.Command{
 			config.SetIfEmpty(&loginArgs.Idp, cloud.SSO.Idp)
 			config.SetIfEmpty(&loginArgs.BaseURL, cloud.SSO.BaseURL)
 			config.SetIfZero(&loginArgs.Expiration, cloud.SSO.Expiration)
-
 		}
 
 		return nil
@@ -40,10 +34,11 @@ var loginCmd = &cobra.Command{
 }
 
 var loginArgs = login.LoginArgs{
-	BaseURL:    "https://auth.otc.t-systems.com/authui/federation/websso",
-	AuthURL:    "https://iam.eu-de.otc.t-systems.com/v3",
-	Protocol:   "saml",
-	Expiration: 3600,
+	BaseURL:      "https://auth.otc.t-systems.com/authui/federation/websso",
+	AuthURL:      "https://iam.eu-de.otc.t-systems.com/v3",
+	Protocol:     "saml",
+	Expiration:   3600,
+	CommonConfig: commonConfig,
 }
 
 func init() {
