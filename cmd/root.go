@@ -7,11 +7,15 @@ import (
 	"github.com/spf13/cobra"
 )
 
+// Version is set at build time via -ldflags
+var Version = "dev"
+
 // rootCmd represents the base command when called without any subcommands
 var rootCmd = &cobra.Command{
-	Use:   "otc",
-	Short: "CLI tool for Open Telekom Cloud",
-	Long:  `otc is a command-line interface (CLI) tool designed to interact with Open Telekom Cloud services.`,
+	Use:     "otc",
+	Short:   "CLI tool for Open Telekom Cloud",
+	Long:    `otc is a command-line interface (CLI) tool designed to interact with Open Telekom Cloud services.`,
+	Version: Version,
 	PersistentPreRunE: func(cmd *cobra.Command, args []string) error {
 		return commonConfig.AugmentFromFiles()
 	},

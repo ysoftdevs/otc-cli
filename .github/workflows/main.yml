@@ -27,7 +27,7 @@ jobs:
         go-version: ${{ matrix.go-version }}
 
     - name: Build
-      run: go build -v ./...
+      run: go build -v -ldflags "-X otc-cli/cmd.Version=dev" ./...
 
     - name: Test
       run: go test -v ./...
@@ -71,7 +71,8 @@ jobs:
         if [ "${{ matrix.goos }}" = "windows" ]; then
           OUTPUT_NAME="${OUTPUT_NAME}.exe"
         fi
-        go build -v -o ${OUTPUT_NAME} .
+        VERSION="${{ github.event.release.tag_name }}"
+        go build -v -ldflags "-X otc-cli/cmd.Version=${VERSION}" -o ${OUTPUT_NAME} .
         chmod +x ${OUTPUT_NAME} || true
 
     - name: Upload Release Asset
