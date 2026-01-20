@@ -1,5 +1,7 @@
 package config
 
+import "os"
+
 type CommonConfig struct {
 	EnvPrefix   string
 	CloudName   string
@@ -16,21 +18,26 @@ func (base *CommonConfig) AugmentFromFiles() error {
 		return err
 	}
 
-	SetIfEmpty(&base.CloudName, clouds.SelectedCloud)
+	SetIfEmpty(&base.CloudName, base.getEnv("CLOUD"), clouds.SelectedCloud)
 	base.Clouds = &clouds
 
 	if cloud, ok := clouds.Clouds[base.CloudName]; ok {
 		base.SelectedCloud = &cloud
-		SetIfEmpty(&base.Region, cloud.RegionName)
-		SetIfEmpty(&base.ProjectName, cloud.Auth.ProjectName)
+		SetIfEmpty(&base.Region, base.getEnv("REGION"), cloud.RegionName)
+		SetIfEmpty(&base.ProjectName, base.getEnv("PROJECT"), cloud.Auth.ProjectName)
 	}
 
 	return nil
 }
 
-func SetIfEmpty(value *string, newValue string) {
+func SetIfEmpty(value *string, newValues ...string) {
 	if *value == "" {
-		*value = newValue
+		for _, v := range newValues {
+			if v != "" {
+				*value = v
+				return
+			}
+		}
 	}
 }
 
@@ -38,4 +45,8 @@ func SetIfZero(value *int, newValue int) {
 	if *value == 0 {
 		*value = newValue
 	}
+}
+
+func (base *CommonConfig) getEnv(key string) string {
+	return os.Getenv(base.EnvPrefix + key)
 }
