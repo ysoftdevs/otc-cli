@@ -1,4 +1,4 @@
-module github.com/ysoftdevs/otc-cli
+module otc-cli
 
 go 1.24.0
 
