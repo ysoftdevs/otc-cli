@@ -1,8 +1,8 @@
 package cmd
 
 import (
-	"otc-cli/formats"
-	"otc-cli/services/rds"
+	"github.com/ysoftdevs/otc-cli/formats"
+	"github.com/ysoftdevs/otc-cli/services/rds"
 
 	"github.com/opentelekomcloud/gophertelekomcloud/openstack/rds/v3/instances"
 	"github.com/spf13/cobra"

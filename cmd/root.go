@@ -2,7 +2,8 @@ package cmd
 
 import (
 	"os"
-	"otc-cli/config"
+
+	"github.com/ysoftdevs/otc-cli/config"
 
 	"github.com/spf13/cobra"
 )

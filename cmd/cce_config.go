@@ -2,7 +2,8 @@ package cmd
 
 import (
 	"fmt"
-	"otc-cli/services/cce"
+
+	"github.com/ysoftdevs/otc-cli/services/cce"
 
 	"github.com/spf13/cobra"
 )

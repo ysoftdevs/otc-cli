@@ -1,7 +1,7 @@
 package cmd
 
 import (
-	"otc-cli/services/ecs"
+	"github.com/ysoftdevs/otc-cli/services/ecs"
 
 	"github.com/spf13/cobra"
 )

@@ -1,6 +1,6 @@
 package main
 
-import "otc-cli/cmd"
+import "github.com/ysoftdevs/otc-cli/cmd"
 
 func main() {
 	cmd.Execute()

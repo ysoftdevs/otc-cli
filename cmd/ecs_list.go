@@ -3,8 +3,8 @@ package cmd
 import (
 	"time"
 
-	"otc-cli/formats"
-	"otc-cli/services/ecs"
+	"github.com/ysoftdevs/otc-cli/formats"
+	"github.com/ysoftdevs/otc-cli/services/ecs"
 
 	"github.com/opentelekomcloud/gophertelekomcloud/openstack/compute/v2/servers"
 	"github.com/spf13/cobra"

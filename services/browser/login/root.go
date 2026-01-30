@@ -8,7 +8,7 @@ import (
 	"path/filepath"
 	"time"
 
-	"otc-cli/config"
+	"github.com/ysoftdevs/otc-cli/config"
 
 	"github.com/chromedp/chromedp"
 )

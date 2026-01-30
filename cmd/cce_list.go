@@ -3,8 +3,8 @@ package cmd
 import (
 	"fmt"
 
-	"otc-cli/formats"
-	"otc-cli/services/cce"
+	"github.com/ysoftdevs/otc-cli/formats"
+	"github.com/ysoftdevs/otc-cli/services/cce"
 
 	"github.com/opentelekomcloud/gophertelekomcloud/openstack/cce/v3/clusters"
 	"github.com/spf13/cobra"

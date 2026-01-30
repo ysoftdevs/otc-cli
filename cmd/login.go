@@ -2,8 +2,9 @@ package cmd
 
 import (
 	"fmt"
-	"otc-cli/config"
-	"otc-cli/services/browser/login"
+
+	"github.com/ysoftdevs/otc-cli/config"
+	"github.com/ysoftdevs/otc-cli/services/browser/login"
 
 	"github.com/spf13/cobra"
 )

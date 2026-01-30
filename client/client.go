@@ -3,7 +3,7 @@ package client
 import (
 	"fmt"
 
-	"otc-cli/config"
+	"github.com/ysoftdevs/otc-cli/config"
 
 	golangsdk "github.com/opentelekomcloud/gophertelekomcloud"
 	"github.com/opentelekomcloud/gophertelekomcloud/openstack"

@@ -4,8 +4,9 @@ import (
 	"encoding/json"
 	"fmt"
 	"os"
-	"otc-cli/client"
-	"otc-cli/config"
+
+	"github.com/ysoftdevs/otc-cli/client"
+	"github.com/ysoftdevs/otc-cli/config"
 
 	golangsdk "github.com/opentelekomcloud/gophertelekomcloud"
 	"github.com/opentelekomcloud/gophertelekomcloud/openstack"
