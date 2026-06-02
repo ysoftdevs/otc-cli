@@ -1,2 +1,21 @@
-tf
+# Build artifacts
+otc
+*.exe
+*.exe~
+*.dll
+*.so
+*.dylib
+*.test
+*.out
+vendor/
+
+# Go workspace
+go.work
+go.work.sum
+
+# Python
+.venv/
+
+# Config / secrets
 *.config
+clouds.yaml

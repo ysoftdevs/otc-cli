@@ -94,6 +94,14 @@ func getServerByName(compute *golangsdk.ServiceClient, name string) (*servers.Se
 	return &serverList[0], nil
 }
 
+func Show(name string, commonConfig *config.CommonConfig) (*servers.Server, error) {
+	compute, err := getComputeClouds(commonConfig)
+	if err != nil {
+		return nil, fmt.Errorf("failed to create Compute client: %w", err)
+	}
+	return getServerByName(compute, name)
+}
+
 func StartServer(name string, commonConfig *config.CommonConfig) error {
 	compute, err := getComputeClouds(commonConfig)
 	if err != nil {

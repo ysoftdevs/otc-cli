@@ -3,13 +3,13 @@ package client
 import (
 	"fmt"
 
-	"github.com/ysoftdevs/otc-cli/config"
+	otcconfig "github.com/ysoftdevs/otc-cli/config"
 
 	golangsdk "github.com/opentelekomcloud/gophertelekomcloud"
 	"github.com/opentelekomcloud/gophertelekomcloud/openstack"
 )
 
-func GetAuthOpts(config *config.CommonConfig) (golangsdk.AuthOptionsProvider, error) {
+func GetAuthOpts(config *otcconfig.CommonConfig) (golangsdk.AuthOptionsProvider, error) {
 	env := openstack.NewEnv(config.EnvPrefix)
 
 	var cloud *openstack.Cloud

@@ -68,17 +68,23 @@ func BrowserLogin(loginArgs LoginArgs) error {
 		return err
 	}
 
-	// Create Chrome allocator with visible browser
-	allocCtx, allocCancel := chromedp.NewExecAllocator(
-		context.Background(),
+	allocOpts := append(chromedp.DefaultExecAllocatorOptions[:],
 		chromedp.Flag("headless", false),
 		chromedp.Flag("disable-gpu", false),
-		// chromedp.Flag("no-sandbox", true),
 		chromedp.Flag("no-default-browser-check", true),
 		chromedp.Flag("no-first-run", true),
 		chromedp.Flag("disable-default-apps", true),
 		chromedp.Flag("window-size", "800,900"),
 		chromedp.UserDataDir(userDataDir),
+	)
+	if p := findChromePath(); p != "" {
+		allocOpts = append(allocOpts, chromedp.ExecPath(p))
+	}
+
+	// Create Chrome allocator with visible browser
+	allocCtx, allocCancel := chromedp.NewExecAllocator(
+		context.Background(),
+		allocOpts...,
 	)
 	defer allocCancel()
 
