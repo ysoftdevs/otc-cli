@@ -46,5 +46,5 @@ func init() {
 }
 
 func initFlagFormat(cmd *cobra.Command) {
-	cmd.Flags().StringVar(&format, "format", "table", "Output format: table, json, yaml")
+	cmd.Flags().StringVarP(&format, "format", "f", "table", "Output format: table, json, yaml")
 }

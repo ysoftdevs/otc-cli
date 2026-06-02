@@ -9,6 +9,8 @@ A command-line interface (CLI) tool for Open Telekom Cloud (OTC) services.
 - 🖥️ **ECS Management**: List and manage Elastic Cloud Servers
 - 🐳 **CCE Operations**: List clusters and manage CCE (Cloud Container Engine) configurations
 - 🌍 **Multi-region**: Support for different regions and projects
+- 📁 **SFS Operations**: List of Scalable file systems (the Turbo variant)
+- ⚖️ **ELB Operations**: List of load balancers and their values
 
 ## Installation
 
@@ -88,10 +90,28 @@ List ECS instances from cloud and region specified in config files:
 otc ecs list
 ```
 
+```bash
+otc ecs show <name> 
+```
+
 With specific cloud and region:
 
 ```bash
 otc ecs list --cloud my-cloud --region eu-de
+```
+
+### SFC (Scalable File Service)
+```bash
+otc sfs list
+```
+
+### ELB (Elastic Load Balancer)
+```bash
+otc elb list
+```
+
+```bash
+otc elb show <name>
 ```
 
 ### CCE (Cloud Container Engine)
@@ -121,6 +141,7 @@ These flags are available for all commands:
 - `-c, --cloud`: Name of the cloud from clouds.yaml to use
 - `-r, --region`: Region to use for the cloud
 - `-p, --project`: Project name to use for authentication
+- `-f, --format`: Changes output style, possible options: `yaml, json, table, value`. Defaults to `table`.
 
 ## Development
 
