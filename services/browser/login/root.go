@@ -21,6 +21,8 @@ type LoginArgs struct {
 	Protocol   string
 	Expiration int
 
+	ExportFormat string
+
 	CommonConfig *config.CommonConfig
 }
 
@@ -58,7 +60,7 @@ func getUserDataDir() (string, error) {
 		return "", fmt.Errorf("failed to create user data directory: %w", err)
 	}
 
-	fmt.Printf("Using user data directory: %s\n", userDataDir)
+	fmt.Fprintf(os.Stderr, "Using user data directory: %s\n", userDataDir)
 	return userDataDir, nil
 }
 
@@ -95,13 +97,13 @@ func BrowserLogin(loginArgs LoginArgs) error {
 	chromedp.Cancel(ctx) // Close browser
 
 	if err != nil {
-		fmt.Printf("Login failed: %v\n", err)
+		fmt.Fprintf(os.Stderr, "Login failed: %v\n", err)
 		return err
 	}
 
 	err = storeCredentials(creds, &loginArgs)
 	if err != nil {
-		fmt.Printf("Failed to update clouds.yaml: %v\n", err)
+		fmt.Fprintf(os.Stderr, "Failed to update clouds.yaml: %v\n", err)
 		return err
 	}
 
@@ -109,33 +111,33 @@ func BrowserLogin(loginArgs LoginArgs) error {
 }
 
 func loginInBrowser(ctx context.Context, loginArgs LoginArgs) (string, error) {
-	fmt.Println("Opening managed browser for login...")
-	fmt.Println("Waiting for authentication...")
+	fmt.Fprintln(os.Stderr, "Opening managed browser for login...")
+	fmt.Fprintln(os.Stderr, "Waiting for authentication...")
 
 	err := chromedp.Run(ctx,
 		chromedp.Navigate(loginArgs.buildURL()),
 		chromedp.WaitReady("body", chromedp.ByQuery),
 	)
 	if err != nil {
-		fmt.Printf("Failed to open browser: %v\n", err)
+		fmt.Fprintf(os.Stderr, "Failed to open browser: %v\n", err)
 		return "", err
 	}
 
 	// Wait for user to complete login and be redirected to console
-	fmt.Println("Please complete the login in the opened browser window.")
-	fmt.Println("Waiting for redirect to console...")
+	fmt.Fprintln(os.Stderr, "Please complete the login in the opened browser window.")
+	fmt.Fprintln(os.Stderr, "Waiting for redirect to console...")
 
 	err = chromedp.Run(ctx,
 		chromedp.WaitVisible("cf_logo", chromedp.ByID),
 	)
 	if err != nil {
-		fmt.Printf("Login timeout or failed: %v\n", err)
+		fmt.Fprintf(os.Stderr, "Login timeout or failed: %v\n", err)
 		return "", err
 	}
 
 	creds, err := fetchTempCredentials(ctx, loginArgs)
 	if err != nil {
-		fmt.Printf("Failed to fetch credentials: %v\n", err)
+		fmt.Fprintf(os.Stderr, "Failed to fetch credentials: %v\n", err)
 		return "", err
 	}
 
@@ -143,7 +145,7 @@ func loginInBrowser(ctx context.Context, loginArgs LoginArgs) (string, error) {
 }
 
 func fetchTempCredentials(ctx context.Context, loginArgs LoginArgs) (string, error) {
-	fmt.Println("Fetching credentials...")
+	fmt.Fprintln(os.Stderr, "Fetching credentials...")
 
 	var creds string
 	var err error
@@ -168,15 +170,15 @@ func fetchTempCredentials(ctx context.Context, loginArgs LoginArgs) (string, err
 			break
 		}
 
-		fmt.Println("Retrying to fetch credentials...")
+		fmt.Fprintln(os.Stderr, "Retrying to fetch credentials...")
 		time.Sleep(2 * time.Second)
 	}
 
 	if err != nil {
-		fmt.Printf("Failed to fetch credentials: %v\n", err)
+		fmt.Fprintf(os.Stderr, "Failed to fetch credentials: %v\n", err)
 		return "", err
 	} else {
-		fmt.Printf("Credentials received\n")
+		fmt.Fprintln(os.Stderr, "Credentials received")
 		return creds, nil
 	}
 }
@@ -189,6 +191,12 @@ func storeCredentials(creds string, loginArgs *LoginArgs) error {
 
 	if credResp.RetInfo != "success" {
 		return fmt.Errorf("credential request failed: %s", credResp.RetInfo)
+	}
+
+	if loginArgs.ExportFormat != "" {
+		if err := exportCredentials(loginArgs.ExportFormat, credResp, loginArgs); err != nil {
+			return err
+		}
 	}
 
 	commonConfig := loginArgs.CommonConfig
@@ -211,10 +219,37 @@ func storeCredentials(creds string, loginArgs *LoginArgs) error {
 	}); err != nil {
 		return err
 	}
-	fmt.Printf("Credentials stored in clouds.yaml under cloud '%s'\n", commonConfig.CloudName)
+	fmt.Fprintf(os.Stderr, "Credentials stored in clouds.yaml under cloud '%s'\n", commonConfig.CloudName)
 	return nil
 }
 
 func logf(format string, args ...any) {
-	fmt.Printf(format+"\n", args...)
+	fmt.Fprintf(os.Stderr, format+"\n", args...)
+}
+
+func exportCredentials(format string, credResp STSCredentialResponse, loginArgs *LoginArgs) error {
+	switch format {
+	case "bash":
+		printBashExport(credResp, loginArgs)
+	default:
+		return fmt.Errorf("unknown export format: %s", format)
+	}
+	return nil
+}
+
+func printBashExport(credResp STSCredentialResponse, loginArgs *LoginArgs) {
+	domainName := ""
+	if loginArgs.CommonConfig != nil && loginArgs.CommonConfig.SelectedCloud != nil {
+		domainName = loginArgs.CommonConfig.SelectedCloud.Auth.DomainName
+	}
+	projectName := ""
+	if loginArgs.CommonConfig != nil {
+		projectName = loginArgs.CommonConfig.ProjectName
+	}
+	fmt.Printf("export OS_AUTH_URL=%s\n", loginArgs.AuthURL)
+	fmt.Printf("export OS_DOMAIN_NAME=%s\n", domainName)
+	fmt.Printf("export OS_PROJECT_NAME=%s\n", projectName)
+	fmt.Printf("export OS_ACCESS_KEY=%s\n", credResp.Data.Credential.Access)
+	fmt.Printf("export OS_SECRET_KEY=%s\n", credResp.Data.Credential.Secret)
+	fmt.Printf("export OS_SECURITY_TOKEN=%s\n", credResp.Data.Credential.SecurityToken)
 }

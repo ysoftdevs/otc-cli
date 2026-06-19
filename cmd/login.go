@@ -51,4 +51,5 @@ func init() {
 	loginCmd.Flags().StringVar(&loginArgs.Idp, "idp", loginArgs.Idp, "Identity provider")
 	loginCmd.Flags().StringVar(&loginArgs.Protocol, "protocol", loginArgs.Protocol, "Authentication protocol")
 	loginCmd.Flags().IntVar(&loginArgs.Expiration, "expiration", loginArgs.Expiration, "Credential expiration time in seconds")
+	loginCmd.Flags().StringVar(&loginArgs.ExportFormat, "export", "", "Print credentials in shell export syntax (e.g. --export=bash)")
 }
