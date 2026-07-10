@@ -13,12 +13,13 @@ var configCmd = &cobra.Command{
 	Use:   "config <cluster-name>",
 	Args:  cobra.ExactArgs(1),
 	Short: "Print a kubeconfig for a CCE cluster",
-	Run: func(cmd *cobra.Command, args []string) {
+	RunE: func(cmd *cobra.Command, args []string) error {
 		cceConfigArgs.ClusterName = args[0]
 
 		if err := cce.Config(cceConfigArgs); err != nil {
-			fmt.Printf("Error printing kubeconfig for CCE cluster '%s': %s\n", args[0], err)
+			return fmt.Errorf("printing kubeconfig for CCE cluster '%s': %w", args[0], err)
 		}
+		return nil
 	},
 }
 

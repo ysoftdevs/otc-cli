@@ -46,14 +46,9 @@ func List(args ListArgs) ([]ShareInfo, error) {
 		return nil, fmt.Errorf("failed to create SFS Turbo client: %w", err)
 	}
 
-	pages, err := shares.List(sfsClient, shares.ListOpts{}).AllPages()
+	allShares, err := shares.List(sfsClient, shares.ListOpts{})
 	if err != nil {
 		return nil, fmt.Errorf("failed to list SFS Turbo shares: %w", err)
-	}
-
-	allShares, err := shares.ExtractTurbos(pages)
-	if err != nil {
-		return nil, fmt.Errorf("failed to extract SFS Turbo shares: %w", err)
 	}
 
 	result := make([]ShareInfo, 0, len(allShares))

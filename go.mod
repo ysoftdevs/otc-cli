@@ -7,7 +7,7 @@ toolchain go1.24.5
 require (
 	github.com/chromedp/chromedp v0.14.2
 	github.com/jedib0t/go-pretty v4.3.0+incompatible
-	github.com/opentelekomcloud/gophertelekomcloud v0.9.5
+	github.com/opentelekomcloud/gophertelekomcloud v0.9.8-0.20260703083050-9dec68a8dcf7
 	github.com/spf13/cobra v1.10.2
 	gopkg.in/yaml.v2 v2.4.0
 )
