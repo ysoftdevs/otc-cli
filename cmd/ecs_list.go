@@ -34,7 +34,6 @@ func init() {
 
 	ecsListCmd.Flags().StringVar(&ecsListArgs.Filter, "filter", ecsListArgs.Filter, "Filter servers by name")
 	ecsListCmd.Flags().IntVar(&ecsListArgs.Limit, "limit", ecsListArgs.Limit, "Limit the number of servers listed")
-	initFlagFormat(ecsListCmd)
 }
 
 func serversTableView() formats.View[servers.Server] {

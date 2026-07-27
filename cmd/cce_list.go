@@ -28,7 +28,6 @@ var listCmd = &cobra.Command{
 
 func init() {
 	cceCmd.AddCommand(listCmd)
-	initFlagFormat(listCmd)
 }
 
 func clustersTableView() formats.View[clusters.Clusters] {

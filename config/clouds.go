@@ -19,6 +19,7 @@ type CloudsYAML struct {
 type CloudConfig struct {
 	Auth        AuthConfig             `yaml:"auth"`
 	SSO         SSOConfig              `yaml:"sso,omitempty"`
+	OIDC        OIDCConfig             `yaml:"oidc,omitempty"`
 	RegionName  string                 `yaml:"region_name,omitempty"`
 	Cloud       string                 `yaml:"cloud,omitempty"`
 	Interface   string                 `yaml:"interface,omitempty"`
@@ -56,6 +57,14 @@ type SSOConfig struct {
 	Protocol   string                 `yaml:"protocol,omitempty"`
 	Expiration int                    `yaml:"expiration,omitempty"`
 	Extra      map[string]interface{} `yaml:",inline"`
+}
+
+type OIDCConfig struct {
+	TenantID string                 `yaml:"tenant_id,omitempty"`
+	ClientID string                 `yaml:"client_id,omitempty"`
+	Idp      string                 `yaml:"idp,omitempty"`
+	Scopes   []string               `yaml:"scopes,omitempty"`
+	Extra    map[string]interface{} `yaml:",inline"`
 }
 
 func LoadCloudsYAMLFromDefaultLocation() (CloudsYAML, error) {
@@ -112,8 +121,52 @@ func SaveCloudsYAML(path string, clouds *CloudsYAML) error {
 		return fmt.Errorf("failed to marshal clouds.yaml: %w", err)
 	}
 
-	if err := os.WriteFile(path, data, 0600); err != nil {
-		return fmt.Errorf("failed to write clouds.yaml: %w", err)
+	return writeFileAtomically(resolveSymlink(path), data, 0600, os.Rename)
+}
+
+// resolveSymlink follows path when it points somewhere else, so that the atomic
+// rename replaces the link target rather than the link itself. A file that does
+// not exist yet keeps the original path.
+func resolveSymlink(path string) string {
+	resolved, err := filepath.EvalSymlinks(path)
+	if err != nil {
+		return path
+	}
+	return resolved
+}
+
+func writeFileAtomically(path string, data []byte, perm os.FileMode, renameFile func(string, string) error) error {
+	dir := filepath.Dir(path)
+	tempFile, err := os.CreateTemp(dir, "."+filepath.Base(path)+".tmp-*")
+	if err != nil {
+		return fmt.Errorf("failed to create temporary file for %s: %w", path, err)
+	}
+
+	tempPath := tempFile.Name()
+	closed := false
+	defer func() {
+		if !closed {
+			_ = tempFile.Close()
+		}
+		_ = os.Remove(tempPath)
+	}()
+
+	if err := tempFile.Chmod(perm); err != nil {
+		return fmt.Errorf("failed to set permissions on %s: %w", tempPath, err)
+	}
+	if _, err := tempFile.Write(data); err != nil {
+		return fmt.Errorf("failed to write %s: %w", tempPath, err)
+	}
+	if err := tempFile.Sync(); err != nil {
+		return fmt.Errorf("failed to sync %s: %w", tempPath, err)
+	}
+	if err := tempFile.Close(); err != nil {
+		return fmt.Errorf("failed to close %s: %w", tempPath, err)
+	}
+	closed = true
+
+	if err := renameFile(tempPath, path); err != nil {
+		return fmt.Errorf("failed to replace %s: %w", path, err)
 	}
 
 	return nil

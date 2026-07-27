@@ -7,7 +7,20 @@ import (
 	"github.com/jedib0t/go-pretty/table"
 )
 
+func Validate(format string) error {
+	switch format {
+	case "", "table", "json", "yaml":
+		return nil
+	default:
+		return fmt.Errorf("unsupported output format %q; supported formats are table, json, yaml", format)
+	}
+}
+
 func newRenderer[T any](format string) (Renderer[T], error) {
+	if err := Validate(format); err != nil {
+		return nil, err
+	}
+
 	switch format {
 	case "json":
 		return &JsonRenderer[T]{}, nil

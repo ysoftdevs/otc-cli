@@ -4,6 +4,7 @@ import (
 	"os"
 
 	"github.com/ysoftdevs/otc-cli/config"
+	"github.com/ysoftdevs/otc-cli/formats"
 
 	"github.com/spf13/cobra"
 )
@@ -19,6 +20,9 @@ var rootCmd = &cobra.Command{
 	Version:      Version,
 	SilenceUsage: true,
 	PersistentPreRunE: func(cmd *cobra.Command, args []string) error {
+		if err := formats.Validate(format); err != nil {
+			return err
+		}
 		return commonConfig.AugmentFromFiles()
 	},
 }
@@ -43,8 +47,5 @@ func init() {
 	rootCmd.PersistentFlags().StringVarP(&commonConfig.CloudName, "cloud", "c", "", "Name of the cloud from clouds.yaml to use")
 	rootCmd.PersistentFlags().StringVarP(&commonConfig.Region, "region", "r", "", "Region to use for the cloud")
 	rootCmd.PersistentFlags().StringVarP(&commonConfig.ProjectName, "project", "p", "", "Project name to use for authentication")
-}
-
-func initFlagFormat(cmd *cobra.Command) {
-	cmd.Flags().StringVarP(&format, "format", "f", "table", "Output format: table, json, yaml")
+	rootCmd.PersistentFlags().StringVarP(&format, "format", "f", "table", "Output format: table, json, yaml")
 }

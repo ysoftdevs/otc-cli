@@ -28,7 +28,6 @@ var ecsShowCmd = &cobra.Command{
 
 func init() {
 	ecsCmd.AddCommand(ecsShowCmd)
-	initFlagFormat(ecsShowCmd)
 }
 
 func extractAddresses(raw map[string]interface{}) string {

@@ -30,7 +30,6 @@ func init() {
 
 	rdsListCmd.Flags().StringVar(&rdsListArgs.Opts.Name, "filter", ecsListArgs.Filter, "Filter instances by name")
 	rdsListCmd.Flags().IntVar(&rdsListArgs.Opts.Limit, "limit", ecsListArgs.Limit, "Limit the number of instances listed")
-	initFlagFormat(rdsListCmd)
 }
 
 func rdsInstancesTableView() formats.View[instances.InstanceResponse] {

@@ -22,5 +22,4 @@ var elbShowCmd = &cobra.Command{
 
 func init() {
 	elbCmd.AddCommand(elbShowCmd)
-	initFlagFormat(elbShowCmd)
 }

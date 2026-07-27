@@ -1,6 +1,9 @@
 package config
 
-import "os"
+import (
+	"fmt"
+	"os"
+)
 
 type CommonConfig struct {
 	EnvPrefix   string
@@ -25,6 +28,8 @@ func (base *CommonConfig) AugmentFromFiles() error {
 		base.SelectedCloud = &cloud
 		SetIfEmpty(&base.Region, base.getEnv("REGION"), cloud.RegionName)
 		SetIfEmpty(&base.ProjectName, base.getEnv("PROJECT"), cloud.Auth.ProjectName)
+	} else if base.CloudName != "" {
+		return fmt.Errorf("cloud %q was not found in clouds.yaml", base.CloudName)
 	}
 
 	return nil
