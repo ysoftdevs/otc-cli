@@ -39,11 +39,13 @@ must be readable only by the current user:
 chmod 0600 ~/.config/openstack/clouds.yaml
 ```
 
-`otc login` enforces mode `0600` whenever it updates the file. Updates are
-written to a temporary file, synced, and atomically renamed so an interrupted
-write does not truncate the existing configuration. If `clouds.yaml` is a
-symbolic link, its target is updated without replacing the link. Run the command
-above once to protect an existing file before its next update.
+On Unix, `otc login` enforces mode `0600` whenever it updates the file. Windows
+does not use POSIX file modes; the file inherits the ACLs of the current user's
+profile. Updates are written to a temporary file, synced, and atomically renamed
+so an interrupted write does not truncate the existing configuration. If
+`clouds.yaml` is a symbolic link, its target is updated without replacing the
+link. On Unix, run the command above once to protect an existing file before its
+next update.
 
 ```yaml
 clouds:

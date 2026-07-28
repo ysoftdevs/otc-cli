@@ -7,9 +7,15 @@ import (
 	"testing"
 )
 
+func setTestHome(t *testing.T, home string) {
+	t.Helper()
+	t.Setenv("HOME", home)
+	t.Setenv("USERPROFILE", home)
+}
+
 func TestAugmentFromFilesRejectsUnknownCloud(t *testing.T) {
 	home := t.TempDir()
-	t.Setenv("HOME", home)
+	setTestHome(t, home)
 
 	configDir := filepath.Join(home, ".config", "openstack")
 	if err := os.MkdirAll(configDir, 0755); err != nil {
@@ -41,7 +47,7 @@ func TestAugmentFromFilesRejectsUnknownCloud(t *testing.T) {
 
 func TestAugmentFromFilesLoadsKnownCloud(t *testing.T) {
 	home := t.TempDir()
-	t.Setenv("HOME", home)
+	setTestHome(t, home)
 
 	configDir := filepath.Join(home, ".config", "openstack")
 	if err := os.MkdirAll(configDir, 0755); err != nil {
