@@ -13,11 +13,12 @@ import (
 )
 
 type LoadBalancerInfo struct {
-	ID         string
-	Name       string
-	Status     string
-	VipAddress string
-	PublicIPs  []string
+	ID                       string
+	Name                     string
+	Status                   string
+	VipAddress               string
+	PublicIPs                []string
+	DeletionProtectionEnable bool
 }
 
 func getELBClient(commonConfig *config.CommonConfig) (*golangsdk.ServiceClient, error) {
@@ -74,6 +75,59 @@ func Show(name string, commonConfig *config.CommonConfig) (*LoadBalancerInfo, er
 		return nil, fmt.Errorf("failed to create ELB client: %w", err)
 	}
 
+	lb, err := findByName(elbClient, name)
+	if err != nil {
+		return nil, err
+	}
+
+	info := toInfo(*lb)
+	return &info, nil
+}
+
+// SetDeletionProtection enables or disables deletion protection on the named
+// load balancer, e.g. to unblock a subsequent Delete call after OTC rejects
+// it with ELB.8917 ("Deletion Protection ... is enable").
+func SetDeletionProtection(name string, enable bool, commonConfig *config.CommonConfig) (*LoadBalancerInfo, error) {
+	elbClient, err := getELBClient(commonConfig)
+	if err != nil {
+		return nil, fmt.Errorf("failed to create ELB client: %w", err)
+	}
+
+	lb, err := findByName(elbClient, name)
+	if err != nil {
+		return nil, err
+	}
+
+	updated, err := loadbalancers.Update(elbClient, lb.ID, loadbalancers.UpdateOpts{
+		DeletionProtectionEnable: &enable,
+	}).Extract()
+	if err != nil {
+		return nil, fmt.Errorf("failed to update load balancer %q: %w", name, err)
+	}
+
+	info := toInfo(*updated)
+	return &info, nil
+}
+
+func Delete(name string, commonConfig *config.CommonConfig) error {
+	elbClient, err := getELBClient(commonConfig)
+	if err != nil {
+		return fmt.Errorf("failed to create ELB client: %w", err)
+	}
+
+	lb, err := findByName(elbClient, name)
+	if err != nil {
+		return err
+	}
+
+	err = loadbalancers.Delete(elbClient, lb.ID).ExtractErr()
+	if err != nil {
+		return fmt.Errorf("failed to delete load balancer %q: %w", name, err)
+	}
+	return nil
+}
+
+func findByName(elbClient *golangsdk.ServiceClient, name string) (*loadbalancers.LoadBalancer, error) {
 	pages, err := loadbalancers.List(elbClient, loadbalancers.ListOpts{
 		Name: []string{name},
 	}).AllPages()
@@ -88,8 +142,7 @@ func Show(name string, commonConfig *config.CommonConfig) (*LoadBalancerInfo, er
 
 	for _, lb := range lbs {
 		if lb.Name == name {
-			info := toInfo(lb)
-			return &info, nil
+			return &lb, nil
 		}
 	}
 	return nil, fmt.Errorf("load balancer %q not found", name)
@@ -97,10 +150,11 @@ func Show(name string, commonConfig *config.CommonConfig) (*LoadBalancerInfo, er
 
 func toInfo(lb loadbalancers.LoadBalancer) LoadBalancerInfo {
 	info := LoadBalancerInfo{
-		ID:         lb.ID,
-		Name:       lb.Name,
-		Status:     lb.OperatingStatus,
-		VipAddress: lb.VipAddress,
+		ID:                       lb.ID,
+		Name:                     lb.Name,
+		Status:                   lb.OperatingStatus,
+		VipAddress:               lb.VipAddress,
+		DeletionProtectionEnable: lb.DeletionProtectionEnable,
 	}
 	for _, eip := range lb.Eips {
 		if eip.EipAddress != "" {
