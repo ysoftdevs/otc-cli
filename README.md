@@ -2,7 +2,7 @@
 
 A command-line interface (CLI) tool for Open Telekom Cloud (OTC) services.
 
-## Features
+## Features Overview
 
 - 🔐 **Authentication**: Browser-based SSO login with credential management
 - ☁️ **Multi-cloud Support**: Manage multiple cloud configurations via `clouds.yaml`
@@ -10,7 +10,7 @@ A command-line interface (CLI) tool for Open Telekom Cloud (OTC) services.
 - 🐳 **CCE Operations**: List clusters and manage CCE (Cloud Container Engine) configurations
 - 🌍 **Multi-region**: Support for different regions and projects
 - 📁 **SFS Operations**: List of Scalable file systems (the Turbo variant)
-- ⚖️ **ELB Operations**: List of load balancers and their values
+- ⚖️ **ELB Operations**: List of load balancers and their values, delete and update
 
 ## Installation
 
@@ -54,6 +54,18 @@ You can override configuration using environment variables with the `OTC_` prefi
 - `OTC_REGION`: Region to use
 - `OTC_PROJECT`: Project name
 
+For non-interactive use (see [AK/SK Login](#aksk-login-cicd--automation) below), the full set of `OTC_`-prefixed variables understood by the underlying SDK includes:
+
+- `OTC_AUTH_URL`: Identity/IAM endpoint, e.g. `https://iam.eu-de.otc.t-systems.com/v3`
+- `OTC_AK` / `OTC_ACCESS_KEY`: Access Key ID
+- `OTC_SK` / `OTC_SECRET_KEY`: Secret Access Key
+- `OTC_SECURITY_TOKEN`: Security token (only needed for temporary, not permanent, AK/SK pairs)
+- `OTC_PROJECT_NAME` / `OTC_PROJECT_ID`: Project to scope the token to
+- `OTC_REGION_NAME`: Region (e.g. `eu-de`)
+- `OTC_AUTH_TYPE`: Set to `aksk` for AK/SK authentication
+
+> **Note:** if `OTC_CLOUD` is not set and a `clouds.yaml` exists (in the working directory, `~/.config/openstack/`, or `/etc/openstack/`), otc-cli silently falls back to that file's top-level `selected_cloud` entry — and any `ak`/`sk`/`security_token` stored there for that cloud take precedence over your exported env vars. On automation runners, make sure no stale `clouds.yaml` is present, and always set `OTC_CLOUD` explicitly to a name that does **not** appear in any file on the runner, so env-var auth can't be silently overridden by a leftover file-based credential.
+
 ## Usage
 
 ### Authentication
@@ -82,6 +94,32 @@ otc login \
   --expiration 3600
 ```
 
+### AK/SK Login (CI/CD & Automation)
+
+`otc login` requires an interactive browser and is not suitable for CI/CD pipelines (e.g. Bamboo). For automation, use a permanent AK/SK pair instead — no `clouds.yaml` or interactive login needed.
+
+**One-time setup on OTC:**
+
+1. Create a dedicated IAM user for the automation pipeline (do not reuse a personal/human account).
+2. Attach a least-privilege custom policy/group granting only the permissions the pipeline needs (e.g. `list`/`show` on the services it queries).
+3. Under that user, generate a permanent **Access Key (AK) / Secret Key (SK)** pair (IAM console → Access Keys). Permanent keys don't expire, can be individually disabled/deleted at any time to revoke access, and every API call made with them is attributable to that key in Cloud Trace Service (CTS) for auditing.
+
+**Usage:** export the credentials as environment variables and run commands directly — no config file required:
+
+```bash
+export OTC_CLOUD=ci-automation   # any name not present in a clouds.yaml on this runner
+export OTC_AUTH_URL=https://iam.eu-de.otc.t-systems.com/v3
+export OTC_AUTH_TYPE=aksk
+export OTC_AK=<access-key-id>
+export OTC_SK=<secret-access-key>
+export OTC_PROJECT_NAME=eu-de_prod
+export OTC_REGION_NAME=eu-de
+
+otc elb list
+otc ecs list
+```
+
+## Features
 ### ECS (Elastic Cloud Server)
 
 List ECS instances from cloud and region specified in config files:
@@ -113,6 +151,41 @@ otc elb list
 ```bash
 otc elb show <name>
 ```
+
+Modify attributes (e.g. disable deletion protection before a delete):
+
+```bash
+otc elb modify <name> --deletion-protection-enabled=false
+```
+
+Delete a load balancer:
+
+```bash
+otc elb delete <name>
+```
+
+Required policy (list, modify attributes, and delete load balancers) — verified against OTC's IAM console (`Version` must be `1.1`; OTC does not register a `1.1`-schema `elb:loadbalancers:update` action, so the wildcard below is required for `otc elb modify` until a discrete action is confirmed):
+
+```json
+{
+  "Version": "1.1",
+  "Statement": [
+    {
+      "Effect": "Allow",
+      "Action": [
+        "elb:loadbalancers:list",
+        "elb:loadbalancers:get",
+        "elb:loadbalancers:delete",
+        "elb:loadbalancers:*"
+      ]
+    }
+  ]
+}
+```
+
+- `elb:loadbalancers:list` / `get`: list and describe load balancers (`otc elb list`, `otc elb show`).
+- `elb:loadbalancers:*`: covers modifying a load balancer (`otc elb modify`, e.g. `deletion_protection_enable`), since OTC has no separate registered `update` action.
+- `elb:loadbalancers:delete`: delete a load balancer (`otc elb delete`).
 
 ### CCE (Cloud Container Engine)
 
