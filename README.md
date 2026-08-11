@@ -120,6 +120,14 @@ otc ecs list
 ```
 
 ## Features
+### Identity
+
+Show which OTC domain, project, user and roles the current credentials (clouds.yaml, AK/SK env vars, etc.) resolve to — useful for verifying which account a Bamboo/CI job is actually authenticated as:
+
+```bash
+otc whoami
+```
+
 ### ECS (Elastic Cloud Server)
 
 List ECS instances from cloud and region specified in config files:
