@@ -29,7 +29,16 @@ func getCCEClouds(commonConfig *config.CommonConfig) (*golangsdk.ServiceClient, 
 	})
 }
 
-func List(commonConfig *config.CommonConfig) ([]clusters.Clusters, error) {
+// Cluster embeds the full SDK cluster representation and adds the API
+// endpoint as a top-level, easily discoverable field. The SDK's own
+// Status.Endpoints field is excluded from JSON marshaling (json:"-"), so
+// without this it would be missing from the JSON output.
+type Cluster struct {
+	clusters.Clusters `yaml:",inline"`
+	APIEndpoint       string `json:"apiEndpoint" yaml:"apiEndpoint"`
+}
+
+func List(commonConfig *config.CommonConfig) ([]Cluster, error) {
 	cce, err := getCCEClouds(commonConfig)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create CCE client: %w", err)
@@ -40,7 +49,36 @@ func List(commonConfig *config.CommonConfig) ([]clusters.Clusters, error) {
 		return nil, fmt.Errorf("failed to list clusters: %w", err)
 	}
 
-	return clusterList, nil
+	result := make([]Cluster, 0, len(clusterList))
+	for _, c := range clusterList {
+		result = append(result, Cluster{
+			Clusters:    c,
+			APIEndpoint: endpoint(c),
+		})
+	}
+
+	return result, nil
+}
+
+// endpoint returns the API access address of a cluster, preferring the
+// public (external) endpoint and falling back to internal ones.
+func endpoint(c clusters.Clusters) string {
+	for _, e := range c.Status.Endpoints {
+		if e.External != "" {
+			return e.External
+		}
+	}
+	for _, e := range c.Status.Endpoints {
+		if e.Url != "" {
+			return e.Url
+		}
+	}
+	for _, e := range c.Status.Endpoints {
+		if e.Internal != "" {
+			return e.Internal
+		}
+	}
+	return ""
 }
 
 type ConfigArgs struct {
