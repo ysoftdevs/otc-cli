@@ -182,6 +182,43 @@ otc ecs list --cloud my-cloud --region eu-de
 otc sfs list
 ```
 
+#### Required permissions
+
+```json
+{
+  "Version": "1.1",
+  "Statement": [
+    {
+      "Effect": "Allow",
+      "Action": [
+        "sfsturbo:shares:getAllShares"
+      ]
+    }
+  ]
+}
+```
+
+### RDS (Relational Database Service)
+```bash
+otc rds list
+```
+
+#### Required permissions
+
+```json
+{
+  "Version": "1.1",
+  "Statement": [
+    {
+      "Effect": "Allow",
+      "Action": [
+        "rds:instance:list"
+      ]
+    }
+  ]
+}
+```
+
 ### ELB (Elastic Load Balancer)
 ```bash
 otc elb list
@@ -202,29 +239,6 @@ Delete a load balancer:
 ```bash
 otc elb delete <name>
 ```
-
-Required policy (list, modify attributes, and delete load balancers) — verified against OTC's IAM console (`Version` must be `1.1`; OTC does not register a `1.1`-schema `elb:loadbalancers:update` action, so the wildcard below is required for `otc elb modify` until a discrete action is confirmed):
-
-```json
-{
-  "Version": "1.1",
-  "Statement": [
-    {
-      "Effect": "Allow",
-      "Action": [
-        "elb:loadbalancers:list",
-        "elb:loadbalancers:get",
-        "elb:loadbalancers:delete",
-        "elb:loadbalancers:*"
-      ]
-    }
-  ]
-}
-```
-
-- `elb:loadbalancers:list` / `get`: list and describe load balancers (`otc elb list`, `otc elb show`).
-- `elb:loadbalancers:*`: covers modifying a load balancer (`otc elb modify`, e.g. `deletion_protection_enable`), since OTC has no separate registered `update` action.
-- `elb:loadbalancers:delete`: delete a load balancer (`otc elb delete`).
 
 #### Required permissions
 
@@ -263,6 +277,23 @@ Save kubeconfig to file:
 
 ```bash
 otc cce config CLUSTER_NAME --output kubeconfig.yaml
+```
+
+#### Required permissions
+
+```json
+{
+  "Version": "1.1",
+  "Statement": [
+    {
+      "Effect": "Allow",
+      "Action": [
+        "cce:cluster:list",
+        "cce:cluster:get"
+      ]
+    }
+  ]
+}
 ```
 
 ## Global Flags
