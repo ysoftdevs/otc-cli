@@ -19,3 +19,5 @@ go.work.sum
 # Config / secrets
 *.config
 clouds.yaml
+
+.idea/

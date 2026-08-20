@@ -26,6 +26,18 @@ go build -o otc .
 
 Download the latest release for your platform from the [Releases](https://github.com/ysoftdevs/otc-cli/releases) page.
 
+and add as system binary 
+
+```bash
+chmod +x ~/Downloads/otc-darwin-arm64
+sudo mv ~/Downloads/otc-darwin-arm64 /usr/local/bin/otc
+```
+
+> On Mac, you may want to remove the binary from quarantine
+> ```bash
+> xattr -d com.apple.quarantine /usr/local/bin/otc
+> ```
+
 ## Configuration
 
 ### clouds.yaml
@@ -146,6 +158,25 @@ With specific cloud and region:
 otc ecs list --cloud my-cloud --region eu-de
 ```
 
+#### Required permissions
+
+```json
+{
+  "Version": "1.1",
+  "Statement": [
+    {
+      "Effect": "Allow",
+      "Action": [
+        "ecs:servers:list",
+        "ecs:servers:get",
+        "ecs:cloudServers:list",
+        "ecs:cloudServers:get"
+      ]
+    }
+  ]
+}
+```
+
 ### SFC (Scalable File Service)
 ```bash
 otc sfs list
@@ -194,6 +225,25 @@ Required policy (list, modify attributes, and delete load balancers) — verifie
 - `elb:loadbalancers:list` / `get`: list and describe load balancers (`otc elb list`, `otc elb show`).
 - `elb:loadbalancers:*`: covers modifying a load balancer (`otc elb modify`, e.g. `deletion_protection_enable`), since OTC has no separate registered `update` action.
 - `elb:loadbalancers:delete`: delete a load balancer (`otc elb delete`).
+
+#### Required permissions
+
+```json
+{
+  "Version": "1.1",
+  "Statement": [
+    {
+      "Effect": "Allow",
+      "Action": [
+        "elb:loadbalancers:list",
+        "elb:loadbalancers:get",
+        "elb:loadbalancers:delete",
+        "elb:loadbalancers:*"
+      ]
+    }
+  ]
+}
+```
 
 ### CCE (Cloud Container Engine)
 

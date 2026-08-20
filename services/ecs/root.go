@@ -31,6 +31,7 @@ func getComputeClouds(commonConfig *config.CommonConfig) (*golangsdk.ServiceClie
 type ListArgs struct {
 	Limit        int
 	Filter       string
+	Status       string
 	CommonConfig *config.CommonConfig
 }
 
@@ -46,6 +47,9 @@ func List(args ListArgs) ([]servers.Server, error) {
 	}
 	if args.Filter != "" {
 		opts.Name = args.Filter
+	}
+	if args.Status != "" {
+		opts.Status = args.Status
 	}
 
 	serverPage := servers.List(compute, opts)
