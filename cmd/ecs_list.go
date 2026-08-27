@@ -33,6 +33,7 @@ func init() {
 	ecsCmd.AddCommand(ecsListCmd)
 
 	ecsListCmd.Flags().StringVar(&ecsListArgs.Filter, "filter", ecsListArgs.Filter, "Filter servers by name")
+	ecsListCmd.Flags().StringVar(&ecsListArgs.Status, "status", ecsListArgs.Status, "Filter servers by status (e.g. ACTIVE)")
 	ecsListCmd.Flags().IntVar(&ecsListArgs.Limit, "limit", ecsListArgs.Limit, "Limit the number of servers listed")
 	initFlagFormat(ecsListCmd)
 }

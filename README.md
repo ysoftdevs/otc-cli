@@ -26,6 +26,18 @@ go build -o otc .
 
 Download the latest release for your platform from the [Releases](https://github.com/ysoftdevs/otc-cli/releases) page.
 
+and add as system binary 
+
+```bash
+chmod +x ~/Downloads/otc-darwin-arm64
+sudo mv ~/Downloads/otc-darwin-arm64 /usr/local/bin/otc
+```
+
+> On Mac, you may want to remove the binary from quarantine
+> ```bash
+> xattr -d com.apple.quarantine /usr/local/bin/otc
+> ```
+
 ## Configuration
 
 ### clouds.yaml
@@ -146,9 +158,65 @@ With specific cloud and region:
 otc ecs list --cloud my-cloud --region eu-de
 ```
 
+#### Required permissions
+
+```json
+{
+  "Version": "1.1",
+  "Statement": [
+    {
+      "Effect": "Allow",
+      "Action": [
+        "ecs:servers:list",
+        "ecs:servers:get",
+        "ecs:cloudServers:list",
+        "ecs:cloudServers:get"
+      ]
+    }
+  ]
+}
+```
+
 ### SFC (Scalable File Service)
 ```bash
 otc sfs list
+```
+
+#### Required permissions
+
+```json
+{
+  "Version": "1.1",
+  "Statement": [
+    {
+      "Effect": "Allow",
+      "Action": [
+        "sfsturbo:shares:getAllShares"
+      ]
+    }
+  ]
+}
+```
+
+### RDS (Relational Database Service)
+```bash
+otc rds list
+```
+
+#### Required permissions
+
+```json
+{
+  "Version": "1.1",
+  "Statement": [
+    {
+      "Effect": "Allow",
+      "Action": [
+        "rds:instance:list"
+      ]
+    }
+  ]
+}
 ```
 
 ### ELB (Elastic Load Balancer)
@@ -172,7 +240,7 @@ Delete a load balancer:
 otc elb delete <name>
 ```
 
-Required policy (list, modify attributes, and delete load balancers) — verified against OTC's IAM console (`Version` must be `1.1`; OTC does not register a `1.1`-schema `elb:loadbalancers:update` action, so the wildcard below is required for `otc elb modify` until a discrete action is confirmed):
+#### Required permissions
 
 ```json
 {
@@ -190,10 +258,6 @@ Required policy (list, modify attributes, and delete load balancers) — verifie
   ]
 }
 ```
-
-- `elb:loadbalancers:list` / `get`: list and describe load balancers (`otc elb list`, `otc elb show`).
-- `elb:loadbalancers:*`: covers modifying a load balancer (`otc elb modify`, e.g. `deletion_protection_enable`), since OTC has no separate registered `update` action.
-- `elb:loadbalancers:delete`: delete a load balancer (`otc elb delete`).
 
 ### CCE (Cloud Container Engine)
 
@@ -213,6 +277,23 @@ Save kubeconfig to file:
 
 ```bash
 otc cce config CLUSTER_NAME --output kubeconfig.yaml
+```
+
+#### Required permissions
+
+```json
+{
+  "Version": "1.1",
+  "Statement": [
+    {
+      "Effect": "Allow",
+      "Action": [
+        "cce:cluster:list",
+        "cce:cluster:get"
+      ]
+    }
+  ]
+}
 ```
 
 ## Global Flags
