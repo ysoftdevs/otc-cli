@@ -6,7 +6,6 @@ import (
 	"github.com/ysoftdevs/otc-cli/formats"
 	"github.com/ysoftdevs/otc-cli/services/cce"
 
-	"github.com/opentelekomcloud/gophertelekomcloud/openstack/cce/v3/clusters"
 	"github.com/spf13/cobra"
 )
 
@@ -30,20 +29,23 @@ func init() {
 	cceCmd.AddCommand(listCmd)
 }
 
-func clustersTableView() formats.View[clusters.Clusters] {
-	return formats.View[clusters.Clusters]{
-		Columns: []formats.Column[clusters.Clusters]{
-			formats.Col("ID", func(c clusters.Clusters) string {
+func clustersTableView() formats.View[cce.Cluster] {
+	return formats.View[cce.Cluster]{
+		Columns: []formats.Column[cce.Cluster]{
+			formats.Col("ID", func(c cce.Cluster) string {
 				return c.Metadata.Id
 			}),
-			formats.Col("Name", func(c clusters.Clusters) string {
+			formats.Col("Name", func(c cce.Cluster) string {
 				return c.Metadata.Name
 			}),
-			formats.Col("Status", func(c clusters.Clusters) string {
+			formats.Col("Status", func(c cce.Cluster) string {
 				return c.Status.Phase
 			}),
-			formats.Col("Version", func(c clusters.Clusters) string {
+			formats.Col("Version", func(c cce.Cluster) string {
 				return c.Spec.Version
+			}),
+			formats.Col("API Endpoint", func(c cce.Cluster) string {
+				return c.APIEndpoint
 			}),
 		},
 	}

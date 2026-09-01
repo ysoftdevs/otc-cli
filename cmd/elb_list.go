@@ -1,6 +1,8 @@
 package cmd
 
 import (
+	"strconv"
+
 	"github.com/ysoftdevs/otc-cli/formats"
 	"github.com/ysoftdevs/otc-cli/services/elb"
 
@@ -45,6 +47,9 @@ func elbTableView() formats.View[elb.LoadBalancerInfo] {
 			}),
 			formats.Col("Public IPs", func(lb elb.LoadBalancerInfo) string {
 				return elb.PublicIPsString(lb)
+			}),
+			formats.Col("Deletion Protection", func(lb elb.LoadBalancerInfo) string {
+				return strconv.FormatBool(lb.DeletionProtectionEnable)
 			}),
 		},
 	}
