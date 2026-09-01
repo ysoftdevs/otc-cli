@@ -21,7 +21,6 @@ var whoamiCmd = &cobra.Command{
 
 func init() {
 	rootCmd.AddCommand(whoamiCmd)
-	initFlagFormat(whoamiCmd)
 }
 
 func whoamiTableView() formats.View[identity.CallerIdentity] {

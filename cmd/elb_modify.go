@@ -31,5 +31,4 @@ var elbModifyCmd = &cobra.Command{
 func init() {
 	elbCmd.AddCommand(elbModifyCmd)
 	elbModifyCmd.Flags().BoolVar(&elbModifyDeletionProtectionEnabled, "deletion-protection-enabled", false, "Enable or disable deletion protection")
-	initFlagFormat(elbModifyCmd)
 }
