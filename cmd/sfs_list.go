@@ -26,7 +26,6 @@ var sfsListArgs = sfs.ListArgs{
 func init() {
 	sfsCmd.AddCommand(sfsListCmd)
 	sfsListCmd.Flags().StringVar(&sfsListArgs.Filter, "filter", "", "Filter shares by name (substring match)")
-	initFlagFormat(sfsListCmd)
 }
 
 func sfsTableView() formats.View[sfs.ShareInfo] {

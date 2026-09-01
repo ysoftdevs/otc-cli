@@ -28,7 +28,6 @@ var elbListArgs = elb.ListArgs{
 func init() {
 	elbCmd.AddCommand(elbListCmd)
 	elbListCmd.Flags().StringVar(&elbListArgs.Filter, "filter", "", "Filter load balancers by name")
-	initFlagFormat(elbListCmd)
 }
 
 func elbTableView() formats.View[elb.LoadBalancerInfo] {

@@ -22,12 +22,14 @@ var loginCmd = &cobra.Command{
 			config.SetIfEmpty(&loginArgs.Idp, cloud.SSO.Idp)
 			config.SetIfEmpty(&loginArgs.BaseURL, cloud.SSO.BaseURL)
 			config.SetIfZero(&loginArgs.Expiration, cloud.SSO.Expiration)
+
+			loginArgs.OIDC = cloud.OIDC
 		}
 
 		return nil
 	},
 	RunE: func(cmd *cobra.Command, args []string) error {
-		if err := login.BrowserLogin(loginArgs); err != nil {
+		if err := login.Login(loginArgs); err != nil {
 			return fmt.Errorf("error during login: %w", err)
 		}
 		return nil
@@ -39,6 +41,7 @@ var loginArgs = login.LoginArgs{
 	AuthURL:      "https://iam.eu-de.otc.t-systems.com/v3",
 	Protocol:     "saml",
 	Expiration:   3600,
+	Browser:      "default",
 	CommonConfig: commonConfig,
 }
 
@@ -51,4 +54,7 @@ func init() {
 	loginCmd.Flags().StringVar(&loginArgs.Idp, "idp", loginArgs.Idp, "Identity provider")
 	loginCmd.Flags().StringVar(&loginArgs.Protocol, "protocol", loginArgs.Protocol, "Authentication protocol")
 	loginCmd.Flags().IntVar(&loginArgs.Expiration, "expiration", loginArgs.Expiration, "Credential expiration time in seconds")
+	loginCmd.Flags().StringVar(&loginArgs.Browser, "browser", loginArgs.Browser, "Browser to open for OIDC login. Use default, or a browser name such as safari, firefox, or chromium")
+	loginCmd.Flags().BoolVar(&loginArgs.DeviceCode, "device-code", loginArgs.DeviceCode, "Use the interactive OIDC device-code flow on a host without a browser")
+	loginCmd.Flags().BoolVar(&loginArgs.Debug, "debug", loginArgs.Debug, "Print login debug information without credential values")
 }

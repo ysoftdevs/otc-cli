@@ -4,6 +4,7 @@ import (
 	"os"
 
 	"github.com/ysoftdevs/otc-cli/config"
+	"github.com/ysoftdevs/otc-cli/formats"
 
 	"github.com/spf13/cobra"
 )
@@ -19,7 +20,21 @@ var rootCmd = &cobra.Command{
 	Version:      Version,
 	SilenceUsage: true,
 	PersistentPreRunE: func(cmd *cobra.Command, args []string) error {
-		return commonConfig.AugmentFromFiles()
+		if err := formats.Validate(format); err != nil {
+			return err
+		}
+		if err := commonConfig.AugmentFromFiles(); err != nil {
+			return err
+		}
+		// Only enforce that the cloud actually exists in clouds.yaml when the
+		// user explicitly asked for it via --cloud. A cloud name coming from
+		// OTC_CLOUD or clouds.yaml's selected_cloud is commonly just a label
+		// used alongside env-based auth (e.g. OTC_AK/OTC_SK) with no matching
+		// clouds.yaml entry, which is a supported way to authenticate.
+		if cmd.Flags().Changed("cloud") {
+			return commonConfig.RequireCloudFound()
+		}
+		return nil
 	},
 }
 
@@ -43,8 +58,5 @@ func init() {
 	rootCmd.PersistentFlags().StringVarP(&commonConfig.CloudName, "cloud", "c", "", "Name of the cloud from clouds.yaml to use")
 	rootCmd.PersistentFlags().StringVarP(&commonConfig.Region, "region", "r", "", "Region to use for the cloud")
 	rootCmd.PersistentFlags().StringVarP(&commonConfig.ProjectName, "project", "p", "", "Project name to use for authentication")
-}
-
-func initFlagFormat(cmd *cobra.Command) {
-	cmd.Flags().StringVarP(&format, "format", "f", "table", "Output format: table, json, yaml")
+	rootCmd.PersistentFlags().StringVarP(&format, "format", "f", "table", "Output format: table, json, yaml")
 }

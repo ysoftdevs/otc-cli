@@ -1,6 +1,9 @@
 package config
 
-import "os"
+import (
+	"fmt"
+	"os"
+)
 
 type CommonConfig struct {
 	EnvPrefix   string
@@ -27,6 +30,20 @@ func (base *CommonConfig) AugmentFromFiles() error {
 		SetIfEmpty(&base.ProjectName, base.getEnv("PROJECT"), cloud.Auth.ProjectName)
 	}
 
+	return nil
+}
+
+// RequireCloudFound reports an error if a cloud name was set but could not be
+// resolved against clouds.yaml. It is deliberately not enforced by
+// AugmentFromFiles itself: a cloud name is commonly supplied purely to carry
+// env-based auth (e.g. OTC_AK/OTC_SK) with no matching clouds.yaml entry, which
+// is a supported way to authenticate. Callers that require an explicit,
+// user-selected cloud to actually exist (e.g. the --cloud flag) should call
+// this after AugmentFromFiles.
+func (base *CommonConfig) RequireCloudFound() error {
+	if base.CloudName != "" && base.SelectedCloud == nil {
+		return fmt.Errorf("cloud %q was not found in clouds.yaml", base.CloudName)
+	}
 	return nil
 }
 
