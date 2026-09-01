@@ -23,7 +23,18 @@ var rootCmd = &cobra.Command{
 		if err := formats.Validate(format); err != nil {
 			return err
 		}
-		return commonConfig.AugmentFromFiles()
+		if err := commonConfig.AugmentFromFiles(); err != nil {
+			return err
+		}
+		// Only enforce that the cloud actually exists in clouds.yaml when the
+		// user explicitly asked for it via --cloud. A cloud name coming from
+		// OTC_CLOUD or clouds.yaml's selected_cloud is commonly just a label
+		// used alongside env-based auth (e.g. OTC_AK/OTC_SK) with no matching
+		// clouds.yaml entry, which is a supported way to authenticate.
+		if cmd.Flags().Changed("cloud") {
+			return commonConfig.RequireCloudFound()
+		}
+		return nil
 	},
 }
 

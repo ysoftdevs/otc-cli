@@ -13,7 +13,11 @@ func setTestHome(t *testing.T, home string) {
 	t.Setenv("USERPROFILE", home)
 }
 
-func TestAugmentFromFilesRejectsUnknownCloud(t *testing.T) {
+func TestAugmentFromFilesDoesNotRejectUnknownCloud(t *testing.T) {
+	// A cloud name with no matching clouds.yaml entry is a supported way to
+	// carry purely env-based auth (e.g. OTC_AK/OTC_SK) through the CLI, so
+	// AugmentFromFiles must not fail here on its own; see RequireCloudFound
+	// for the opt-in strict check used when --cloud is passed explicitly.
 	home := t.TempDir()
 	setTestHome(t, home)
 
@@ -36,9 +40,16 @@ func TestAugmentFromFilesRejectsUnknownCloud(t *testing.T) {
 		CloudName: "otc-prod-eu-prod",
 	}
 
-	err := cfg.AugmentFromFiles()
+	if err := cfg.AugmentFromFiles(); err != nil {
+		t.Fatalf("AugmentFromFiles returned error: %v", err)
+	}
+	if cfg.SelectedCloud != nil {
+		t.Fatal("expected no selected cloud for an unknown cloud name")
+	}
+
+	err := cfg.RequireCloudFound()
 	if err == nil {
-		t.Fatal("expected error for unknown cloud")
+		t.Fatal("expected RequireCloudFound to reject an unknown cloud")
 	}
 	if !strings.Contains(err.Error(), `cloud "otc-prod-eu-prod" was not found`) {
 		t.Fatalf("unexpected error: %v", err)
