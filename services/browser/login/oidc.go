@@ -394,7 +394,7 @@ func otcUnscopedToken(httpClient *http.Client, authURL, idp, idToken string) (st
 		return "", fmt.Errorf("failed to read OTC OIDC token exchange response: %w", err)
 	}
 	if resp.StatusCode < 200 || resp.StatusCode > 299 {
-		return "", fmt.Errorf("OTC OIDC token exchange failed: HTTP %d: %s", resp.StatusCode, strings.TrimSpace(string(body)))
+		return "", otcOIDCExchangeError(resp.StatusCode, idp, idToken, body)
 	}
 
 	token := resp.Header.Get("X-Subject-Token")
@@ -402,6 +402,68 @@ func otcUnscopedToken(httpClient *http.Client, authURL, idp, idToken string) (st
 		return "", fmt.Errorf("OTC OIDC token exchange did not return X-Subject-Token")
 	}
 	return token, nil
+}
+
+func otcOIDCExchangeError(status int, idp, idToken string, body []byte) error {
+	// Only report the service's message, not arbitrary response fields that
+	// might echo credentials. Some gateways return plain text instead of JSON.
+	var response struct {
+		Error struct {
+			Message string `json:"message"`
+		} `json:"error"`
+	}
+	message := "response did not contain an error message"
+	if json.Unmarshal(body, &response) == nil && response.Error.Message != "" {
+		message = response.Error.Message
+	} else if !json.Valid(body) {
+		message = strings.TrimSpace(string(body))
+	}
+	if idToken != "" {
+		message = strings.ReplaceAll(message, idToken, "[redacted ID token]")
+	}
+	if len(message) > 1024 {
+		message = message[:1024] + "..."
+	}
+	base := fmt.Sprintf("OTC OIDC token exchange failed: HTTP %d; identity provider=%q, protocol=oidc: %q", status, idp, message)
+	if !strings.Contains(strings.ToLower(message), "could not find available signing key") {
+		return fmt.Errorf("%s", base)
+	}
+
+	metadata := "ID token metadata could not be decoded"
+	if header, claims, err := decodeIDTokenDebug(idToken); err == nil {
+		// These claims are unverified diagnostic hints, never authorization
+		// decisions. Deliberately omit identity, roles, and the token itself.
+		metadata = fmt.Sprintf("unverified ID token metadata: iss=%s, aud=%s, kid=%s",
+			oidcDiagnosticValue(claims["iss"]), oidcDiagnosticValue(claims["aud"]), oidcDiagnosticValue(header["kid"]))
+	}
+	return fmt.Errorf("%s\nEntra returned an ID token, but OTC has not authenticated this session. %s.\nCheck this OTC identity provider's OIDC issuer, allowed client ID/audience, and published or uploaded signing keys (JWKS) against the token's issuer and kid. A different provider/app or stale keys can cause this response; it does not identify the exact cause", base, metadata)
+}
+
+func oidcDiagnosticValue(value any) string {
+	// A string audience or an array of strings is valid JWT metadata. Do not
+	// print unexpected objects or other claims included in malformed input.
+	var values []string
+	switch v := value.(type) {
+	case string:
+		values = []string{v}
+	case []any:
+		for _, item := range v {
+			text, ok := item.(string)
+			if !ok || len(values) >= 8 {
+				return "<invalid>"
+			}
+			values = append(values, text)
+		}
+	default:
+		return "<unavailable>"
+	}
+	for i, value := range values {
+		if len(value) > 512 {
+			value = value[:512] + "..."
+		}
+		values[i] = fmt.Sprintf("%q", value)
+	}
+	return strings.Join(values, ", ")
 }
 
 func otcScopedToken(httpClient *http.Client, authURL, unscopedToken, projectName, domainID string) (string, string, error) {

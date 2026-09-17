@@ -11,6 +11,7 @@ A command-line interface (CLI) tool for Open Telekom Cloud (OTC) services.
 - 🌍 **Multi-region**: Support for different regions and projects
 - 📁 **SFS Operations**: List of Scalable file systems (the Turbo variant)
 - ⚖️ **ELB Operations**: List of load balancers and their values, delete and update
+- **IAM inspection and management**: Users, groups, scoped roles, policies and federation, with previews before writes
 
 ## Installation
 
@@ -165,6 +166,36 @@ The `--browser` flag is only an opener for OIDC login. It does not automate the
 browser, read cookies, or execute JavaScript in Safari/Firefox/Chrome. Legacy
 SAML/SSO login does not support `--browser`.
 
+#### OTC rejects the OIDC signing key
+
+If the browser says **Entra sign-in received** but the terminal reports
+`Could not find available signing key: OIDC configuration and id token`, the
+browser callback worked. The failure is in OTC's subsequent ID-token exchange.
+
+The CLI includes the selected OTC provider and the token's `iss` (issuer),
+`aud` (client/audience) and `kid` (signing key ID) in this error. These are
+unverified diagnostic fields; the token itself is not printed.
+
+In the selected OTC identity provider's OpenID Connect configuration, compare:
+
+- **IdP URL** with `iss`.
+- **Client ID** with `aud` and the profile's `oidc.client_id`.
+- **Signing Key** with the issuer's current JWKS and the token's `kid`.
+
+An old uploaded key set or a different app/provider configuration can produce
+this error. Check the actual values before changing the provider. Microsoft
+describes key matching and rotation in its
+[signature validation troubleshooting guide](https://learn.microsoft.com/en-us/troubleshoot/entra/entra-id/app-integration/troubleshooting-signature-validation-errors).
+
+Login and resource commands are separate invocations:
+
+```bash
+otc login --cloud my-cloud --browser default
+otc cce list --cloud my-cloud
+```
+
+`otc login ... cce list` is rejected as invalid input.
+
 #### Hosts without a browser
 
 The default OIDC flow needs a browser that can reach a callback listener on the
@@ -243,6 +274,95 @@ Show which OTC domain, project, user and roles the current credentials (clouds.y
 ```bash
 otc whoami
 ```
+
+### IAM (Identity and Access Management)
+
+Inspect users, groups, policies, federation, projects, agencies, access-key
+metadata and account security settings using the selected cloud's credentials.
+Inspection commands read configuration; the caller needs the corresponding read
+permissions. Management commands preview changes by default and require explicit
+apply flags to write. A cached project token is exchanged for an account token in memory
+for global IAM access, leaving `clouds.yaml` unchanged.
+
+```bash
+otc iam --help
+otc iam users list --cloud devOIDC
+otc iam groups list --cloud devOIDC
+otc iam groups roles GROUP_ID --domain-id DOMAIN_ID --cloud devOIDC
+otc iam groups roles GROUP_ID --project-id PROJECT_ID --cloud devOIDC
+otc iam groups roles GROUP_ID --domain-id DOMAIN_ID --all-projects --cloud devOIDC
+otc iam roles show ROLE_ID --cloud devOIDC --format json
+otc iam assignments list --domain-id DOMAIN_ID --user-id USER_ID --include-group=true --cloud devOIDC
+```
+
+`roles list` returns system roles/policies by default. Add `--domain-id DOMAIN_ID`
+to list that account's custom policies instead. `--name` matches the API `name`,
+which may differ from `display_name`. `--project-id` selects the IAM assignment
+scope; the existing global `--project` selects the authentication project by name.
+
+Follow a federation provider's protocol to find its mapping ID:
+
+```bash
+otc iam providers protocols YS_OIDC_EID_DEV --cloud devOIDC
+otc iam protocols show YS_OIDC_EID_DEV oidc --cloud devOIDC
+otc iam mappings show MAPPING_ID --cloud devOIDC --format yaml
+otc iam providers oidc show YS_OIDC_EID_DEV --cloud devOIDC --format json
+otc iam providers oidc check YS_OIDC_EID_DEV --cloud devOIDC
+```
+
+Use the protocol ID returned by the API (for example `saml` or `oidc`). The
+provider ID can be a name such as `YS_OIDC_EID_DEV`; its mapping ID is a
+different identifier. `sso_type` describes the kind of user mapping, not the
+authentication protocol.
+
+`oidc check` compares the stored configuration with public discovery and signing
+keys. It does not validate a token signature, login, claims mapping or effective
+access. Differences or unavailable evidence produce a nonzero exit status;
+keys are not updated. Provider configuration does not report creation or
+last-use time.
+
+Other read-only inspection examples:
+
+```bash
+otc iam projects accessible --cloud devOIDC
+otc iam catalog list --cloud devOIDC
+otc iam agencies list --domain-id DOMAIN_ID --cloud devOIDC
+otc iam credentials list --user-id USER_ID --cloud devOIDC
+otc iam credentials show ACCESS_KEY --cloud devOIDC
+otc iam mfa list --cloud devOIDC
+otc iam login-protection show USER_ID --cloud devOIDC
+otc iam security password-policy DOMAIN_ID --cloud devOIDC
+```
+
+`credentials show` reads creation and last-use metadata without exposing the
+secret key. `catalog list` uses the original project credentials. Assignments
+and persistent group memberships do not calculate effective permissions or
+enumerate all virtual federated users.
+
+JSON/YAML preserve full policy and mapping documents, including conditions and
+resources. As with existing commands, `show` returns a one-element array in
+these formats. Table output for `show` displays all returned fields.
+
+Management commands cover users, groups, projects, agencies, custom policies,
+memberships/grants, federation, credentials and security settings. For example,
+preview a group update from a JSON file containing
+`{"group":{"description":"Reviewed description"}}`:
+
+```bash
+otc iam groups update GROUP_ID --file group-update.json --cloud devOIDC --format json
+```
+
+Applying requires `--apply` and the exact `--confirm` path from the preview.
+Updates, deletes and relationship changes also require its `--expected-hash`
+and a new `--backup` file. Credential-producing operations require a new private
+`--output` file. Files are created with mode `0600` on Unix and are never
+overwritten. Writes disable retries and redirects. A backup is a snapshot of
+the inspected state, not a complete rollback; concurrent changes remain possible
+between the final state check and the write.
+
+Replace `devOIDC` and example IDs with your profile and API identifiers. See the
+[IAM command map and management workflow](docs/iam.md) for all 50 inspection
+commands, supported management operations, apply examples and known limits.
 
 ### ECS (Elastic Cloud Server)
 
