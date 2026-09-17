@@ -275,8 +275,11 @@ snapshots use `{"present":true,"resource":{...}}`; an explicit API 404 uses
 | `--output PATH` | Required when creating access keys or MFA devices; saves the raw secret-bearing response to a new private file |
 
 Apply-only flags are rejected without `--apply`. Backups and output files are
-created exclusively, with mode `0600` on Unix, and never overwrite an existing
-file. A required output file is reserved before sending the write. New
+created exclusively and never overwrite an existing file. Unix uses mode `0600`;
+Windows uses a protected access-control list (ACL) granting access only to the
+current user. Windows verifies the owner and ACL through the open file handle
+before writing any content; unsupported filesystems fail without exposing data.
+A required output file is reserved before sending the write. New
 credentials and MFA seeds are saved there rather than printed to the terminal.
 
 Creation operations require `--confirm` and any required `--output`, but do not

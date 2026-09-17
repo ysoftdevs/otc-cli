@@ -55,7 +55,8 @@ With --apply, --confirm must equal the plan's confirmation path. Existing state
 also requires --expected-hash from the reviewed plan and --backup to a new file.
 Secret-producing operations require --output to a new private file.
 
-Backups and responses use mode 0600 and never overwrite a file. A backup is
+Backups and responses use mode 0600 on Unix and a current-user-only ACL on
+Windows. They never overwrite a file. A backup is
 evidence of the original state, not a complete rollback of credentials or related
 objects. OTC has no atomic compare-and-swap here: another administrator can
 change the resource between the state check and the write. Failed or uncertain

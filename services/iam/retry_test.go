@@ -66,14 +66,21 @@ func TestIAMReadRejectsMalformedAndOversizedJSON(t *testing.T) {
 	}{
 		{"trailing object", `{"user":{"id":"u"}} {"user":{"id":"other"}}`, "exactly one JSON value"},
 		{"trailing garbage", `{"user":{"id":"u"}} invalid`, "exactly one JSON value"},
-		{"truncated", `{"user":{"id":"u"}`, "invalid JSON"},
+		// Decoder.More/Token reach different validation branches across Go
+		// versions. Require rejection and no partial record, not exact wording.
+		{"truncated object", `{"user":{"id":"u"}`, ""},
+		{"truncated array", `{"user":{"groups":[{"id":"g"}`, ""},
+		{"truncated string", `{"user":{"id":"u`, ""},
 		{"oversized", `{"user":{"description":"` + strings.Repeat("x", 16<<20) + `"}}`, "exceeds"},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			service, _ := testService(t, func(w http.ResponseWriter, r *http.Request) { fmt.Fprint(w, tc.body) })
 			record, err := service.GetUser("u")
-			if err == nil || record != nil || !strings.Contains(err.Error(), tc.message) {
+			if err == nil || record != nil {
 				t.Fatalf("malformed response accepted: record fields=%d err=%v", len(record), err)
+			}
+			if tc.message != "" && !strings.Contains(err.Error(), tc.message) {
+				t.Fatalf("unexpected validation error: got %v, want message containing %q", err, tc.message)
 			}
 		})
 	}

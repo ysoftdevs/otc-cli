@@ -330,7 +330,7 @@ func (s *Service) ApplyMutation(plan MutationPlan, options MutationApplyOptions)
 	}
 	var output *os.File
 	if options.OutputPath != "" {
-		output, err = os.OpenFile(options.OutputPath, os.O_WRONLY|os.O_CREATE|os.O_EXCL, 0600)
+		output, err = createPrivateFile(options.OutputPath)
 		if err != nil {
 			return nil, fmt.Errorf("reserve private response file: %w", err)
 		}
@@ -396,7 +396,7 @@ func (s *Service) ApplyMutation(plan MutationPlan, options MutationApplyOptions)
 }
 
 func writePrivateExclusive(path string, data []byte) error {
-	file, err := os.OpenFile(path, os.O_WRONLY|os.O_CREATE|os.O_EXCL, 0600)
+	file, err := createPrivateFile(path)
 	if err != nil {
 		return fmt.Errorf("create private backup without overwriting: %w", err)
 	}

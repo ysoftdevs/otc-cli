@@ -355,9 +355,9 @@ otc iam groups update GROUP_ID --file group-update.json --cloud devOIDC --format
 Applying requires `--apply` and the exact `--confirm` path from the preview.
 Updates, deletes and relationship changes also require its `--expected-hash`
 and a new `--backup` file. Credential-producing operations require a new private
-`--output` file. Files are created with mode `0600` on Unix and are never
-overwritten. Writes disable retries and redirects. A backup is a snapshot of
-the inspected state, not a complete rollback; concurrent changes remain possible
+`--output` file. Files use mode `0600` on Unix and a protected current-user-only
+ACL on Windows, and are never overwritten. Writes disable retries and redirects.
+A backup is a snapshot of the inspected state, not a complete rollback; concurrent changes remain possible
 between the final state check and the write.
 
 Replace `devOIDC` and example IDs with your profile and API identifiers. See the

@@ -109,10 +109,7 @@ func TestMutationApplyBacksUpStateBeforeSingleWrite(t *testing.T) {
 	if err != nil || result["status"] != "completed" || reads != 2 || writes != 1 {
 		t.Fatalf("apply: result=%v err=%v reads=%d writes=%d", result, err, reads, writes)
 	}
-	info, err := os.Stat(backup)
-	if err != nil || info.Mode().Perm() != 0600 {
-		t.Fatalf("backup permissions: %v %v", info, err)
-	}
+	assertPrivateFilePermissions(t, backup)
 }
 
 func TestMutationApplyRefusesStaleUnconfirmedAndUnsafeFiles(t *testing.T) {
@@ -218,10 +215,7 @@ func TestMutationSecretResponseRequiresPrivateFile(t *testing.T) {
 	if err != nil || !strings.Contains(string(data), "one-time-secret") {
 		t.Fatalf("secret not preserved in file: %v", err)
 	}
-	info, err := os.Stat(output)
-	if err != nil || info.Mode().Perm() != 0600 {
-		t.Fatalf("secret output permissions: %v %v", info, err)
-	}
+	assertPrivateFilePermissions(t, output)
 }
 
 func TestMutationSuccessfulEmptyDeleteAndMalformedResponse(t *testing.T) {
