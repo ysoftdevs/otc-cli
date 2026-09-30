@@ -2,6 +2,7 @@ package login
 
 import (
 	"context"
+	"encoding/base64"
 	"encoding/json"
 	"errors"
 	"io"
@@ -13,6 +14,61 @@ import (
 	"testing"
 	"time"
 )
+
+func TestOTCSigningKeyFailureIncludesSafeDiagnosticContext(t *testing.T) {
+	encode := func(raw string) string { return base64.RawURLEncoding.EncodeToString([]byte(raw)) }
+	idToken := encode(`{"alg":"RS256","kid":"rotated-key"}`) + "." +
+		encode(`{"iss":"https://login.microsoftonline.com/tenant/v2.0","aud":"client-id","email":"private@example.test","roles":["private-role"]}`) + ".signature"
+	httpClient := newOIDCHTTPClient(time.Second)
+	httpClient.Transport = roundTripFunc(func(r *http.Request) (*http.Response, error) {
+		return jsonResponse(r, http.StatusNotFound, nil, `{"error":{"message":"Could not find available signing key: OIDC configuration and id token.","code":404},"id_token":"do-not-log-response-credentials"}`), nil
+	})
+	token, err := otcUnscopedToken(httpClient, "https://iam.example.test/v3", "configured-idp", idToken)
+	if err == nil || token != "" {
+		t.Fatalf("failed exchange must return an error and no token")
+	}
+	for _, want := range []string{"HTTP 404", `identity provider="configured-idp"`, "protocol=oidc", "unverified ID token metadata", `iss="https://login.microsoftonline.com/tenant/v2.0"`, `aud="client-id"`, `kid="rotated-key"`, "JWKS", "does not identify the exact cause"} {
+		if !strings.Contains(err.Error(), want) {
+			t.Errorf("error lacks %q: %v", want, err)
+		}
+	}
+	for _, forbidden := range []string{idToken, "private@example.test", "private-role", "do-not-log-response-credentials"} {
+		if strings.Contains(err.Error(), forbidden) {
+			t.Error("diagnostic exposed token contents outside the permitted metadata")
+		}
+	}
+}
+
+func TestOTCExchangeErrorRedactsEchoedTokenAndHandlesMalformedJWT(t *testing.T) {
+	idToken := "sensitive.invalid-jwt"
+	body := []byte("Could not find available signing key: " + idToken)
+	err := otcOIDCExchangeError(http.StatusNotFound, "idp", idToken, body)
+	if strings.Contains(err.Error(), idToken) {
+		t.Fatal("error echoed the bearer token")
+	}
+	if !strings.Contains(err.Error(), "[redacted ID token]") || !strings.Contains(err.Error(), "metadata could not be decoded") {
+		t.Fatalf("unexpected redacted diagnostic: %v", err)
+	}
+}
+
+func TestOTCUnrelatedExchangeFailureDoesNotSuggestSigningKeyCause(t *testing.T) {
+	err := otcOIDCExchangeError(http.StatusForbidden, "idp", "token", []byte(`{"error":{"message":"Mapping did not match"}}`))
+	if !strings.Contains(err.Error(), "Mapping did not match") || strings.Contains(err.Error(), "JWKS") {
+		t.Fatalf("unrelated failures must retain their original diagnosis: %v", err)
+	}
+}
+
+func TestOIDCDiagnosticValueLimitsAndQuotesMetadata(t *testing.T) {
+	if got := oidcDiagnosticValue([]any{"one", "two\nthree"}); got != `"one", "two\nthree"` {
+		t.Fatalf("unexpected audience diagnostic: %s", got)
+	}
+	if got := oidcDiagnosticValue(map[string]any{"private": "not-metadata"}); got != "<unavailable>" {
+		t.Fatalf("unexpected metadata object should not be logged: %s", got)
+	}
+	if len(oidcDiagnosticValue(strings.Repeat("x", 2000))) > 520 {
+		t.Fatal("unbounded metadata value")
+	}
+}
 
 func TestEntraAuthorizeURLIncludesStateAndPKCE(t *testing.T) {
 	rawURL := entraAuthorizeURL(

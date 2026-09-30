@@ -13,6 +13,7 @@ import (
 var loginCmd = &cobra.Command{
 	Use:   "login",
 	Short: "Authenticate user and store credentials",
+	Args:  cobra.NoArgs,
 	PreRunE: func(cmd *cobra.Command, args []string) error {
 		if cloud := commonConfig.SelectedCloud; cloud != nil {
 			config.SetIfEmpty(&loginArgs.AuthURL, cloud.Auth.AuthURL)
